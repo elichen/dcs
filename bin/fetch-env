@@ -1,0 +1,169 @@
+#!/usr/bin/env python3
+"""
+fetch-env - Environment manager for Fetch robot sessions
+
+Usage:
+    fetch-env start [--no-ui]    # Start new session
+    fetch-env stop <session-id>  # Stop session
+    fetch-env list              # List active sessions
+    fetch-env clean             # Clean up dead sessions
+"""
+
+import sys
+import os
+import time
+import argparse
+import subprocess
+
+# Add parent directory to Python path
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+
+from lib.fetch_session import SessionManager, FetchSession
+
+def start_session(show_ui=True):
+    """Start a new fetch session."""
+    session_id = SessionManager.create_session(show_ui)
+    
+    # Fork a process to run the session
+    pid = os.fork()
+    if pid == 0:  # Child process
+        try:
+            # Set up environment
+            os.environ['PYTHONPATH'] = f"{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}:{os.environ.get('PYTHONPATH', '')}"
+            
+            # Create and run session
+            session = FetchSession(session_id, show_ui)
+            session.run_session()
+        except Exception as e:
+            print(f"Session {session_id} failed: {e}")
+            sys.exit(1)
+    else:  # Parent process
+        # Wait a moment for session to initialize
+        time.sleep(2)
+        
+        # Verify session started
+        sessions = SessionManager.list_sessions()
+        if any(s['id'] == session_id for s in sessions):
+            print(session_id)  # Output just the session ID for scripting
+            return 0
+        else:
+            print(f"Failed to start session {session_id}", file=sys.stderr)
+            return 1
+
+def stop_session(session_id):
+    """Stop a specific session."""
+    sessions = SessionManager.list_sessions()
+    session = next((s for s in sessions if s['id'] == session_id), None)
+    
+    if not session:
+        print(f"Session {session_id} not found", file=sys.stderr)
+        return 1
+    
+    try:
+        # Send SIGTERM to the session process
+        os.kill(session['pid'], 15)  # SIGTERM
+        
+        # Wait up to 5 seconds for clean shutdown
+        for _ in range(50):
+            if not any(s['id'] == session_id for s in SessionManager.list_sessions()):
+                print(f"Session {session_id} stopped")
+                return 0
+            time.sleep(0.1)
+        
+        # Force kill if still running
+        try:
+            os.kill(session['pid'], 9)  # SIGKILL
+            print(f"Session {session_id} force stopped")
+        except ProcessLookupError:
+            pass
+        
+        # Clean up files
+        SessionManager.cleanup_session(session_id)
+        return 0
+        
+    except ProcessLookupError:
+        print(f"Session {session_id} process not found, cleaning up")
+        SessionManager.cleanup_session(session_id)
+        return 0
+    except Exception as e:
+        print(f"Failed to stop session {session_id}: {e}", file=sys.stderr)
+        return 1
+
+def list_sessions():
+    """List all active sessions."""
+    sessions = SessionManager.list_sessions()
+    
+    if not sessions:
+        print("No active sessions")
+        return 0
+    
+    print("Active Sessions:")
+    print("ID       PID     Status")
+    print("-" * 20)
+    
+    for session in sessions:
+        print(f"{session['id']:<8} {session['pid']:<7} {session['status']}")
+    
+    return 0
+
+def clean_sessions():
+    """Clean up dead sessions."""
+    sessions = SessionManager.list_sessions()
+    cleaned = 0
+    
+    # The list_sessions() method already cleans up dead sessions
+    # So we just need to check how many were cleaned
+    
+    print(f"Session cleanup complete")
+    return 0
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Manage Fetch robot environment sessions",
+        formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    
+    subparsers = parser.add_subparsers(dest='command', help='Available commands')
+    
+    # Start command
+    start_parser = subparsers.add_parser('start', help='Start a new session')
+    start_parser.add_argument('--no-ui', action='store_true', help='Start without UI window')
+    
+    # Stop command
+    stop_parser = subparsers.add_parser('stop', help='Stop a session')
+    stop_parser.add_argument('session_id', help='Session ID to stop')
+    
+    # List command
+    list_parser = subparsers.add_parser('list', help='List active sessions')
+    
+    # Clean command
+    clean_parser = subparsers.add_parser('clean', help='Clean up dead sessions')
+    
+    args = parser.parse_args()
+    
+    if not args.command:
+        parser.print_help()
+        return 1
+    
+    try:
+        if args.command == 'start':
+            return start_session(show_ui=not args.no_ui)
+        elif args.command == 'stop':
+            return stop_session(args.session_id)
+        elif args.command == 'list':
+            return list_sessions()
+        elif args.command == 'clean':
+            return clean_sessions()
+        else:
+            print(f"Unknown command: {args.command}", file=sys.stderr)
+            return 1
+            
+    except KeyboardInterrupt:
+        print("\nInterrupted", file=sys.stderr)
+        return 1
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        return 1
+
+if __name__ == '__main__':
+    sys.exit(main())

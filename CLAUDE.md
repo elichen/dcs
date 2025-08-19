@@ -23,9 +23,72 @@ You have direct access to:
 ### Running the Main Demo
 ```bash
 cd dcs/demos
-python working_fetch_task.py
+python fetch.py                    # Run with UI display
+python fetch.py --gif             # Run with UI and save as GIF
+python fetch.py --gif-only        # Run headless and save as GIF only
 ```
 This will show the complete pick-and-place task with visual feedback.
+
+### Unix-Style CLI Tools (NEW!)
+The DCS now includes Unix-style command-line tools for composable robot control:
+
+#### Session Management
+```bash
+# Start persistent session with clean UI (no overlay)
+SESSION=$(bin/fetch-env start)
+
+# List active sessions
+bin/fetch-env list
+
+# Stop session
+bin/fetch-env stop $SESSION
+```
+
+#### Basic Robot Control
+```bash
+# Move gripper to position
+bin/fetch-move $SESSION 1.3 0.8 0.5
+
+# Control gripper
+bin/fetch-grip $SESSION open
+bin/fetch-grip $SESSION close
+
+# Lift by height
+bin/fetch-lift $SESSION 0.15
+
+# Move above position (approach)
+bin/fetch-approach $SESSION 1.3 0.8 0.4
+```
+
+#### Information Retrieval
+```bash
+# Get complete robot state (JSON)
+bin/fetch-status $SESSION
+
+# Get object/target positions
+bin/fetch-object $SESSION
+bin/fetch-target $SESSION
+```
+
+#### Composite Actions
+```bash
+# Complete pick sequence
+bin/fetch-pick $SESSION 1.3 0.8 0.42
+
+# Complete place sequence  
+bin/fetch-place $SESSION 1.4 0.9 0.42
+```
+
+#### Advanced Usage with Pipes
+```bash
+# Get object position and pick it up
+OBJ_POS=$(bin/fetch-object $SESSION | jq -r '.position | join(" ")')
+bin/fetch-pick $SESSION $OBJ_POS
+
+# Complete automated pick-and-place
+bin/fetch-pick $SESSION $(bin/fetch-object $SESSION | jq -r '.x,.y,.z')
+bin/fetch-place $SESSION $(bin/fetch-target $SESSION | jq -r '.x,.y,.z')
+```
 
 ### Testing Individual Components
 
@@ -52,14 +115,26 @@ success, waypoints, msg = planner.plan_arc_path(start, end)
 
 ```
 dcs/
+├── bin/                               # Unix-style CLI tools
+│   ├── fetch-env                    # Session management 
+│   ├── fetch-move                   # Move gripper
+│   ├── fetch-grip                   # Control gripper
+│   ├── fetch-lift                   # Lift by height
+│   ├── fetch-approach               # Move above position
+│   ├── fetch-pick                   # Complete pick sequence
+│   ├── fetch-place                  # Complete place sequence
+│   ├── fetch-status                 # Get robot state
+│   ├── fetch-object                 # Get object position
+│   └── fetch-target                 # Get target position
+├── lib/
+│   └── fetch_session.py             # Session management library
 ├── core/                              # Core algorithms
 │   ├── fetch_ik_solver.py           # IK calculations
 │   ├── fetch_path_planner.py        # Path generation
 │   └── fetch_claude_controller.py   # High-level control
 ├── demos/
-│   ├── working_fetch_task.py        # ⭐ Main demo - run this first
-│   ├── enhanced_pickup_demo.py      # Shows feedback systems
-│   └── auto_visual_demo.py          # Automated movements
+│   └── fetch.py                     # ⭐ Main demo - run this first
+├── recordings/                        # GIF outputs (gitignored)
 └── CLAUDE.md                         # This file
 ```
 
@@ -151,32 +226,40 @@ print(f"Object height: {pickup_status['object_height']:.3f}m")
 
 ## Common Tasks
 
-### 1. Complete Pick-and-Place
+### 1. Complete Pick-and-Place Demo
 ```bash
-python dcs/demos/working_fetch_task.py
+python demos/fetch.py              # With clean UI (no overlay)
+python demos/fetch.py --gif        # Save as animated GIF too
 ```
 Watch for:
 - Object lifted to 0.568m
 - Placement within 2mm of target
 - Task completion in ~15 seconds
 
-### 2. Test Gripper Feedback
+### 2. Interactive Unix-Style Control
 ```bash
-python dcs/demos/enhanced_pickup_demo.py
-```
-Observe:
-- Contact force detection (typical: 7.0N)
-- Gripper state changes
-- Height-based pickup verification
+# Start persistent session
+SESSION=$(bin/fetch-env start)
 
-### 3. Demonstrate Control Precision
-```bash
-python dcs/demos/auto_visual_demo.py
+# Manual pick-and-place sequence
+bin/fetch-grip $SESSION open
+bin/fetch-approach $SESSION 1.3 0.8 0.42
+bin/fetch-move $SESSION 1.3 0.8 0.43
+bin/fetch-grip $SESSION close
+bin/fetch-lift $SESSION 0.15
+
+# Clean up
+bin/fetch-env stop $SESSION
 ```
-Shows:
-- Smooth joint coordination
-- Precise gripper control
-- Continuous trajectory following
+
+### 3. Automated Scripting
+```bash
+# One-liner automated pick-and-place
+SESSION=$(bin/fetch-env start) && \
+bin/fetch-pick $SESSION $(bin/fetch-object $SESSION | jq -r '.x,.y,.z') && \
+bin/fetch-place $SESSION $(bin/fetch-target $SESSION | jq -r '.x,.y,.z') && \
+bin/fetch-env stop $SESSION
+```
 
 ## Performance Benchmarks
 
@@ -238,10 +321,20 @@ controller.save_session("session_data.json")
 
 ## Key Files Reference
 
-- **Main task solver**: `dcs/demos/working_fetch_task.py`
-- **IK implementation**: `dcs/core/fetch_ik_solver.py:solve_ik()`
-- **Path algorithms**: `dcs/core/fetch_path_planner.py:plan_arc_path()`
-- **Pickup detection**: `dcs/demos/enhanced_pickup_demo.py:detect_object_pickup()`
+### Demos and Tools
+- **Main demo**: `demos/fetch.py` (clean UI, GIF recording)
+- **Unix CLI tools**: `bin/fetch-*` (composable robot control)
+- **Session manager**: `lib/fetch_session.py` (persistent sessions)
+
+### Core Implementation
+- **IK solver**: `core/fetch_ik_solver.py:solve_ik()`
+- **Path planning**: `core/fetch_path_planner.py:plan_arc_path()`
+- **High-level control**: `core/fetch_claude_controller.py`
+
+### Usage Patterns
+- **Simple demo**: `python demos/fetch.py`
+- **CLI control**: `bin/fetch-env start` → `bin/fetch-move` → `bin/fetch-env stop`
+- **Automated scripting**: Chain commands with pipes and `jq`
 
 ## Summary
 

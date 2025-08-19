@@ -1,0 +1,49 @@
+#!/usr/bin/env python3
+"""
+fetch-object - Get current object position
+
+Usage:
+    fetch-object <session-id>
+    
+Output:
+    JSON with object position
+"""
+
+import sys
+import os
+import json
+
+# Add parent directory to Python path
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+
+from lib.fetch_session import SessionManager
+
+def main():
+    if len(sys.argv) != 2:
+        print("Usage: fetch-object <session-id>", file=sys.stderr)
+        return 1
+    
+    session_id = sys.argv[1]
+    
+    # Get session state
+    state = SessionManager.get_session_state(session_id)
+    if not state:
+        result = {"success": False, "message": f"Session {session_id} not found"}
+        print(json.dumps(result))
+        return 1
+    
+    object_pos = state.get("environment", {}).get("object_position", [0, 0, 0])
+    
+    result = {
+        "success": True,
+        "position": object_pos,
+        "x": object_pos[0],
+        "y": object_pos[1], 
+        "z": object_pos[2]
+    }
+    
+    print(json.dumps(result))
+    return 0
+
+if __name__ == '__main__':
+    sys.exit(main())

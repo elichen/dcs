@@ -1,0 +1,27 @@
+{
+  "bash_restrictions": {
+    "allow_without_confirmation": [
+      "bin/fetch-*",
+      "PYTHONPATH=/Users/elichen/code:$PYTHONPATH bin/fetch-*",
+      "demos/fetch.py"
+    ]
+  },
+  "tool_permissions": {
+    "bash": {
+      "auto_approve_patterns": [
+        "^PYTHONPATH=/Users/elichen/code:\\$PYTHONPATH bin/fetch-.*",
+        "^bin/fetch-.*",
+        "^python demos/fetch\\.py.*",
+        "PYTHONPATH=/Users/elichen/code:\\$PYTHONPATH bin/fetch-approach.*",
+        "PYTHONPATH=/Users/elichen/code:\\$PYTHONPATH bin/fetch-move.*",
+        "PYTHONPATH=/Users/elichen/code:\\$PYTHONPATH bin/fetch-grip.*",
+        "PYTHONPATH=/Users/elichen/code:\\$PYTHONPATH bin/fetch-pick.*",
+        "PYTHONPATH=/Users/elichen/code:\\$PYTHONPATH bin/fetch-place.*",
+        "PYTHONPATH=/Users/elichen/code:\\$PYTHONPATH bin/fetch-object.*",
+        "PYTHONPATH=/Users/elichen/code:\\$PYTHONPATH bin/fetch-target.*",
+        "PYTHONPATH=/Users/elichen/code:\\$PYTHONPATH bin/fetch-status.*",
+        "PYTHONPATH=/Users/elichen/code:\\$PYTHONPATH bin/fetch-env.*"
+      ]
+    }
+  }
+}

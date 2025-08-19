@@ -1,0 +1,109 @@
+#!/usr/bin/env python3
+"""
+fetch-place - Execute complete place sequence at specified position
+
+Usage:
+    fetch-place <session-id> <x> <y> <z>
+    
+Output:
+    JSON with success status and detailed results
+"""
+
+import sys
+import os
+import json
+import subprocess
+
+# Add parent directory to Python path
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+
+from lib.fetch_session import SessionManager
+
+def run_tool(tool_name, *args):
+    """Run a fetch tool and return the result."""
+    try:
+        script_dir = os.path.dirname(os.path.abspath(__file__))
+        tool_path = os.path.join(script_dir, tool_name)
+        
+        result = subprocess.run([tool_path] + list(args), 
+                              capture_output=True, text=True, check=False)
+        
+        if result.stdout.strip():
+            return json.loads(result.stdout)
+        else:
+            return {"success": False, "message": f"No output from {tool_name}"}
+    except Exception as e:
+        return {"success": False, "message": f"Failed to run {tool_name}: {str(e)}"}
+
+def main():
+    if len(sys.argv) != 5:
+        print("Usage: fetch-place <session-id> <x> <y> <z>", file=sys.stderr)
+        return 1
+    
+    session_id = sys.argv[1]
+    x, y, z = sys.argv[2], sys.argv[3], sys.argv[4]
+    
+    # Validate coordinates
+    try:
+        float(x), float(y), float(z)
+    except ValueError:
+        result = {"success": False, "message": "Invalid coordinates"}
+        print(json.dumps(result))
+        return 1
+    
+    # Check if session exists
+    state = SessionManager.get_session_state(session_id)
+    if not state:
+        result = {"success": False, "message": f"Session {session_id} not found"}
+        print(json.dumps(result))
+        return 1
+    
+    # Execute place sequence
+    sequence_results = []
+    overall_success = True
+    
+    # Step 1: Transport above placement position (force grip maintenance)
+    transport_pos = [float(x), float(y), float(z) + 0.10]
+    command = {"action": "move_with_grip", "position": transport_pos}
+    success, message = SessionManager.send_command(session_id, command)
+    result = {"success": success, "message": message, "target_position": [float(x), float(y), float(z)], "approach_position": transport_pos}
+    sequence_results.append({"step": "transport", "result": result})
+    if not success:
+        overall_success = False
+    
+    # Step 2: Lower to placement position (force grip maintenance) 
+    if overall_success:
+        place_pos = [float(x), float(y), float(z) + 0.05]  # 5cm above placement surface
+        command = {"action": "move_with_grip", "position": place_pos}
+        success, message = SessionManager.send_command(session_id, command)
+        result = {"success": success, "message": message, "target_position": place_pos}
+        sequence_results.append({"step": "lower", "result": result})
+        if not success:
+            overall_success = False
+    
+    # Step 3: Open gripper (release)
+    if overall_success:
+        result = run_tool("fetch-grip", session_id, "open")
+        sequence_results.append({"step": "release", "result": result})
+        if not result.get("success", False):
+            overall_success = False
+    
+    # Step 4: Retract gripper
+    if overall_success:
+        result = run_tool("fetch-lift", session_id, "0.10")
+        sequence_results.append({"step": "retract", "result": result})
+        if not result.get("success", False):
+            overall_success = False
+    
+    final_result = {
+        "success": overall_success,
+        "message": "Place sequence completed" if overall_success else "Place sequence failed",
+        "target_position": [float(x), float(y), float(z)],
+        "sequence_results": sequence_results
+    }
+    
+    print(json.dumps(final_result, indent=2))
+    return 0 if overall_success else 1
+
+if __name__ == '__main__':
+    sys.exit(main())
