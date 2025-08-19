@@ -1,0 +1,15 @@
+# Direct Control System Requirements
+# Install with: pip install -r requirements.txt
+
+# Core dependencies
+gymnasium>=0.29.0
+gymnasium-robotics>=1.2.0
+mujoco>=3.0.0
+numpy>=1.24.0
+
+# Visualization (optional)
+matplotlib>=3.7.0
+
+# Development tools (optional)
+ipython>=8.12.0
+jupyter>=1.0.0
