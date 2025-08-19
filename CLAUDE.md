@@ -20,74 +20,67 @@ You have direct access to:
 
 ## Quick Commands for Claude Code
 
-### Running the Main Demo
-```bash
-cd dcs/demos
-python fetch.py                    # Run with UI display
-python fetch.py --gif             # Run with UI and save as GIF
-python fetch.py --gif-only        # Run headless and save as GIF only
-```
-This will show the complete pick-and-place task with visual feedback.
+**IMPORTANT: Only use the Unix-style CLI tools below. Do not run Python scripts directly.**
 
-### Unix-Style CLI Tools (NEW!)
+### Unix-Style CLI Tools
 The DCS now includes Unix-style command-line tools for composable robot control:
 
 #### Session Management
 ```bash
 # Start persistent session with clean UI (no overlay)
-SESSION=$(bin/fetch-env start)
+SESSION=$(bin/env start)
 
 # List active sessions
-bin/fetch-env list
+bin/env list
 
 # Stop session
-bin/fetch-env stop $SESSION
+bin/env stop $SESSION
 ```
 
 #### Basic Robot Control
 ```bash
 # Move gripper to position
-bin/fetch-move $SESSION 1.3 0.8 0.5
+bin/move $SESSION 1.3 0.8 0.5
 
 # Control gripper
-bin/fetch-grip $SESSION open
-bin/fetch-grip $SESSION close
+bin/grip $SESSION open
+bin/grip $SESSION close
 
 # Lift by height
-bin/fetch-lift $SESSION 0.15
+bin/lift $SESSION 0.15
 
 # Move above position (approach)
-bin/fetch-approach $SESSION 1.3 0.8 0.4
+bin/approach $SESSION 1.3 0.8 0.4
 ```
 
 #### Information Retrieval
 ```bash
 # Get complete robot state (JSON)
-bin/fetch-status $SESSION
+bin/status $SESSION
 
 # Get object/target positions
-bin/fetch-object $SESSION
-bin/fetch-target $SESSION
+bin/object $SESSION
+bin/target $SESSION
 ```
 
 #### Composite Actions
 ```bash
 # Complete pick sequence
-bin/fetch-pick $SESSION 1.3 0.8 0.42
+bin/pick $SESSION 1.3 0.8 0.42
 
 # Complete place sequence  
-bin/fetch-place $SESSION 1.4 0.9 0.42
+bin/place $SESSION 1.4 0.9 0.42
 ```
 
 #### Advanced Usage with Pipes
 ```bash
 # Get object position and pick it up
-OBJ_POS=$(bin/fetch-object $SESSION | jq -r '.position | join(" ")')
-bin/fetch-pick $SESSION $OBJ_POS
+OBJ_POS=$(bin/object $SESSION | jq -r '.position | join(" ")')
+bin/pick $SESSION $OBJ_POS
 
 # Complete automated pick-and-place
-bin/fetch-pick $SESSION $(bin/fetch-object $SESSION | jq -r '.x,.y,.z')
-bin/fetch-place $SESSION $(bin/fetch-target $SESSION | jq -r '.x,.y,.z')
+bin/pick $SESSION $(bin/object $SESSION | jq -r '.x,.y,.z')
+bin/place $SESSION $(bin/target $SESSION | jq -r '.x,.y,.z')
 ```
 
 ### Testing Individual Components
@@ -116,16 +109,16 @@ success, waypoints, msg = planner.plan_arc_path(start, end)
 ```
 dcs/
 ├── bin/                               # Unix-style CLI tools
-│   ├── fetch-env                    # Session management 
-│   ├── fetch-move                   # Move gripper
-│   ├── fetch-grip                   # Control gripper
-│   ├── fetch-lift                   # Lift by height
-│   ├── fetch-approach               # Move above position
-│   ├── fetch-pick                   # Complete pick sequence
-│   ├── fetch-place                  # Complete place sequence
-│   ├── fetch-status                 # Get robot state
-│   ├── fetch-object                 # Get object position
-│   └── fetch-target                 # Get target position
+│   ├── env                          # Session management 
+│   ├── move                         # Move gripper
+│   ├── grip                         # Control gripper
+│   ├── lift                         # Lift by height
+│   ├── approach                     # Move above position
+│   ├── pick                         # Complete pick sequence
+│   ├── place                        # Complete place sequence
+│   ├── status                       # Get robot state
+│   ├── object                       # Get object position
+│   └── target                       # Get target position
 ├── lib/
 │   └── fetch_session.py             # Session management library
 ├── core/                              # Core algorithms
@@ -226,39 +219,29 @@ print(f"Object height: {pickup_status['object_height']:.3f}m")
 
 ## Common Tasks
 
-### 1. Complete Pick-and-Place Demo
-```bash
-python demos/fetch.py              # With clean UI (no overlay)
-python demos/fetch.py --gif        # Save as animated GIF too
-```
-Watch for:
-- Object lifted to 0.568m
-- Placement within 2mm of target
-- Task completion in ~15 seconds
-
-### 2. Interactive Unix-Style Control
+### 1. Interactive Unix-Style Control
 ```bash
 # Start persistent session
-SESSION=$(bin/fetch-env start)
+SESSION=$(bin/env start)
 
 # Manual pick-and-place sequence
-bin/fetch-grip $SESSION open
-bin/fetch-approach $SESSION 1.3 0.8 0.42
-bin/fetch-move $SESSION 1.3 0.8 0.43
-bin/fetch-grip $SESSION close
-bin/fetch-lift $SESSION 0.15
+bin/grip $SESSION open
+bin/approach $SESSION 1.3 0.8 0.42
+bin/move $SESSION 1.3 0.8 0.43
+bin/grip $SESSION close
+bin/lift $SESSION 0.15
 
 # Clean up
-bin/fetch-env stop $SESSION
+bin/env stop $SESSION
 ```
 
-### 3. Automated Scripting
+### 2. Automated Scripting
 ```bash
 # One-liner automated pick-and-place
-SESSION=$(bin/fetch-env start) && \
-bin/fetch-pick $SESSION $(bin/fetch-object $SESSION | jq -r '.x,.y,.z') && \
-bin/fetch-place $SESSION $(bin/fetch-target $SESSION | jq -r '.x,.y,.z') && \
-bin/fetch-env stop $SESSION
+SESSION=$(bin/env start) && \
+bin/pick $SESSION $(bin/object $SESSION | jq -r '.x,.y,.z') && \
+bin/place $SESSION $(bin/target $SESSION | jq -r '.x,.y,.z') && \
+bin/env stop $SESSION
 ```
 
 ## Performance Benchmarks
@@ -322,8 +305,7 @@ controller.save_session("session_data.json")
 ## Key Files Reference
 
 ### Demos and Tools
-- **Main demo**: `demos/fetch.py` (clean UI, GIF recording)
-- **Unix CLI tools**: `bin/fetch-*` (composable robot control)
+- **Unix CLI tools**: `bin/*` (composable robot control)
 - **Session manager**: `lib/fetch_session.py` (persistent sessions)
 
 ### Core Implementation
@@ -332,8 +314,7 @@ controller.save_session("session_data.json")
 - **High-level control**: `core/fetch_claude_controller.py`
 
 ### Usage Patterns
-- **Simple demo**: `python demos/fetch.py`
-- **CLI control**: `bin/fetch-env start` → `bin/fetch-move` → `bin/fetch-env stop`
+- **CLI control**: `bin/env start` → `bin/move` → `bin/env stop`
 - **Automated scripting**: Chain commands with pipes and `jq`
 
 ## Summary

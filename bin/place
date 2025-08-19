@@ -83,14 +83,14 @@ def main():
     
     # Step 3: Open gripper (release)
     if overall_success:
-        result = run_tool("fetch-grip", session_id, "open")
+        result = run_tool("grip", session_id, "open")
         sequence_results.append({"step": "release", "result": result})
         if not result.get("success", False):
             overall_success = False
     
     # Step 4: Retract gripper
     if overall_success:
-        result = run_tool("fetch-lift", session_id, "0.10")
+        result = run_tool("lift", session_id, "0.10")
         sequence_results.append({"step": "retract", "result": result})
         if not result.get("success", False):
             overall_success = False
