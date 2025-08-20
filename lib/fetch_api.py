@@ -99,7 +99,7 @@ class FetchAPI:
             maintain_grip=maintain_grip
         )
         if success and isinstance(result, (list, tuple)) and len(result) == 2:
-            return result[0], result[1]
+            return bool(result[0]), str(result[1])
         elif success:
             return True, str(result)
         else:
@@ -139,7 +139,7 @@ class FetchAPI:
         
         success, result = self._call_direct_api("control_gripper", open_gripper)
         if success and isinstance(result, (list, tuple)) and len(result) == 2:
-            return result[0], result[1]
+            return bool(result[0]), str(result[1])
         elif success:
             return True, str(result)
         else:
@@ -160,7 +160,7 @@ class FetchAPI:
         
         success, result = self._call_direct_api("lift_by_height", height)
         if success and isinstance(result, (list, tuple)) and len(result) == 2:
-            return result[0], result[1]
+            return bool(result[0]), str(result[1])
         elif success:
             return True, str(result)
         else:
@@ -182,7 +182,7 @@ class FetchAPI:
         
         success, result = self._call_direct_api("wave_motion", cycles, speed)
         if success and isinstance(result, (list, tuple)) and len(result) == 2:
-            return result[0], result[1]
+            return bool(result[0]), str(result[1])
         elif success:
             return True, str(result)
         else:

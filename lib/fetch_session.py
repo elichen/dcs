@@ -28,9 +28,10 @@ from .session_registry import get_registry
 class FetchSession:
     """Manages a persistent Fetch robot session with shared state."""
     
-    def __init__(self, session_id: str, show_ui: bool = True):
+    def __init__(self, session_id: str, show_ui: bool = True, env_name: str = "FetchPickAndPlace-v4"):
         self.session_id = session_id
         self.show_ui = show_ui
+        self.env_name = env_name
         self.session_dir = Path(tempfile.gettempdir()) / "fetch-sessions"
         self.session_dir.mkdir(exist_ok=True)
         
@@ -94,7 +95,7 @@ class FetchSession:
     def _init_environment(self):
         """Initialize the Gymnasium environment."""
         # Always use rgb_array mode to avoid overlay, then display with OpenCV if needed
-        self.env = gym.make("FetchPickAndPlace-v4", render_mode="rgb_array", max_episode_steps=1000)
+        self.env = gym.make(self.env_name, render_mode="rgb_array", max_episode_steps=1000)
         self.obs, self.info = self.env.reset()
         
         # Get MuJoCo model and data

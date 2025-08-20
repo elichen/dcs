@@ -74,7 +74,7 @@ class DirectExecutor:
             
             if positions:
                 avg_position = np.mean(positions)
-                return avg_position > 0.01  # True if open
+                return bool(avg_position > 0.01)  # True if open
         except:
             pass
         
@@ -123,7 +123,7 @@ class DirectExecutor:
                     distance = np.linalg.norm(error)
                     
                     if distance < self.tolerance:
-                        return True, f"Reached target (error: {distance:.4f}m)"
+                        return bool(True), f"Reached target (error: {distance:.4f}m)"
                     
                     # Proportional controller
                     velocity = np.clip(error * self.k_p, -self.max_velocity, self.max_velocity)
@@ -170,7 +170,7 @@ class DirectExecutor:
         
         # Check final distance
         final_distance = np.linalg.norm(target_pos - self._get_gripper_position())
-        return final_distance < 0.01, f"Stopped at distance: {final_distance:.4f}m"
+        return bool(final_distance < 0.01), f"Stopped at distance: {final_distance:.4f}m"
     
     
     def control_gripper(self, open_gripper: bool, steps: int = 25, 
