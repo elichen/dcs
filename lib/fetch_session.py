@@ -28,12 +28,43 @@ from .session_registry import get_registry
 class FetchSession:
     """Manages a persistent Fetch robot session with shared state."""
     
-    def __init__(self, session_id: str, show_ui: bool = True, env_name: str = "FetchPickAndPlace-v4"):
+    def __init__(self, session_id: str, show_ui: bool = True, env_name: str = "FetchPickAndPlace-v4", 
+                 record_gif: bool = False, gif_filename: str = None):
         self.session_id = session_id
         self.show_ui = show_ui
         self.env_name = env_name
+        self.record_gif = record_gif
+        self.gif_filename = gif_filename
         self.session_dir = Path(tempfile.gettempdir()) / "fetch-sessions"
         self.session_dir.mkdir(exist_ok=True)
+        
+        # GIF recording setup
+        self.gif_frames = []
+        self.gif_writer = None
+        if record_gif:
+            try:
+                import imageio
+                self.imageio = imageio
+                # Create recordings directory
+                recordings_dir = Path.cwd() / "recordings"
+                recordings_dir.mkdir(exist_ok=True)
+                
+                # Generate filename if not provided
+                if not gif_filename:
+                    from datetime import datetime
+                    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                    gif_filename = f"session_{session_id}_{timestamp}.gif"
+                
+                # Ensure .gif extension
+                if not gif_filename.endswith('.gif'):
+                    gif_filename += '.gif'
+                    
+                self.gif_path = recordings_dir / gif_filename
+                print(f"🎬 GIF recording will be saved to: {self.gif_path}")
+                
+            except ImportError:
+                print("⚠️  imageio not available for GIF recording")
+                self.record_gif = False
         
         # Socket path
         self.socket_path = self.session_dir / f"{session_id}.sock"
@@ -247,15 +278,18 @@ class FetchSession:
     
     def _render_frame(self):
         """Render and display frame without overlay using OpenCV."""
-        if not self.show_ui:
-            return
-            
         frame = self.env.render()
         if frame is not None:
-            # Convert RGB to BGR for OpenCV
-            frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-            cv2.imshow(self.cv_window_name, frame_bgr)
-            cv2.waitKey(1)  # Non-blocking window update
+            # Record frame for GIF if requested
+            if self.record_gif:
+                self.gif_frames.append(frame.copy())
+            
+            # Display frame if UI is enabled
+            if self.show_ui:
+                # Convert RGB to BGR for OpenCV
+                frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+                cv2.imshow(self.cv_window_name, frame_bgr)
+                cv2.waitKey(1)  # Non-blocking window update
     
     # Render callback no longer needed - DirectExecutor renders directly
     
@@ -312,6 +346,15 @@ class FetchSession:
     def cleanup(self):
         """Clean up session resources."""
         self.running = False
+        
+        # Save GIF if recording
+        if self.record_gif and self.gif_frames:
+            try:
+                print(f"🎬 Saving GIF with {len(self.gif_frames)} frames...")
+                self.imageio.mimsave(str(self.gif_path), self.gif_frames, fps=30)
+                print(f"✅ GIF saved: {self.gif_path}")
+            except Exception as e:
+                print(f"❌ Failed to save GIF: {e}")
         
         # Close socket server
         if self.socket_server:
@@ -660,8 +703,17 @@ class FetchSession:
             from .direct_executor import DirectExecutor
             import json
             
+            # Create GIF capture callback if recording
+            gif_capture_callback = None
+            if self.record_gif:
+                def capture_frame(frame):
+                    self.gif_frames.append(frame)
+                gif_capture_callback = capture_frame
+            
             # Create DirectExecutor with our environment
-            executor = DirectExecutor(self.env, self.model, self.data)
+            executor = DirectExecutor(self.env, self.model, self.data, 
+                                    cv_window_name=self.cv_window_name, show_ui=self.show_ui,
+                                    gif_capture_callback=gif_capture_callback)
             
             # Set up execution environment
             exec_globals = {
@@ -706,8 +758,17 @@ class FetchSession:
         try:
             # Create DirectExecutor for main thread execution
             from .direct_executor import DirectExecutor
+            
+            # Create GIF capture callback if recording
+            gif_capture_callback = None
+            if self.record_gif:
+                def capture_frame(frame):
+                    self.gif_frames.append(frame)
+                gif_capture_callback = capture_frame
+            
             executor = DirectExecutor(self.env, self.model, self.data, env_lock=self.env_lock, 
-                                    cv_window_name=self.cv_window_name, show_ui=self.show_ui)
+                                    cv_window_name=self.cv_window_name, show_ui=self.show_ui,
+                                    gif_capture_callback=gif_capture_callback)
             print(f"✅ DirectExecutor created for main thread")
             
             while self.running:

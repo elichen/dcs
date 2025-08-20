@@ -464,3 +464,4 @@ Remember: This system doesn't just achieve 100% success - it does so across unli
 - you don't need to prepend pythonpath  
 - sessions can run in foreground or background
 - all CLI tools use socket communication for performance
+- env start is blocking

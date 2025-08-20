@@ -21,17 +21,17 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'
 
 from lib.fetch_session import SessionManager, FetchSession
 
-def start_session(show_ui=True, env_name="FetchPickAndPlace-v4"):
+def start_session(env_name="FetchPickAndPlace-v4", record_gif=False, gif_filename=None):
     """Start a new fetch session in foreground."""
-    session_id = SessionManager.create_session(show_ui)
+    session_id = SessionManager.create_session(True)
+    print(session_id, flush=True)  # Output session ID immediately with flush
     
     try:
         # Set up environment
         os.environ['PYTHONPATH'] = f"{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}:{os.environ.get('PYTHONPATH', '')}"
         
         # Create and run session
-        session = FetchSession(session_id, show_ui, env_name)
-        print(session_id)  # Output session ID first
+        session = FetchSession(session_id, True, env_name, record_gif, gif_filename)
         session.run_session()  # This blocks until session ends
         
     except KeyboardInterrupt:
@@ -125,6 +125,10 @@ def main():
     start_parser = subparsers.add_parser('start', help='Start a new session')
     start_parser.add_argument('--env', default='FetchPickAndPlace-v4', 
                             help='Gymnasium environment name (default: FetchPickAndPlace-v4)')
+    start_parser.add_argument('--gif', action='store_true',
+                            help='Record session as animated GIF')
+    start_parser.add_argument('--gif-file', 
+                            help='Custom filename for GIF (default: auto-generated)')
     
     # Stop command
     stop_parser = subparsers.add_parser('stop', help='Stop a session')
@@ -144,7 +148,8 @@ def main():
     
     try:
         if args.command == 'start':
-            return start_session(show_ui=True, env_name=args.env)
+            return start_session(env_name=args.env, 
+                                record_gif=args.gif, gif_filename=args.gif_file)
         elif args.command == 'stop':
             return stop_session(args.session_id)
         elif args.command == 'list':

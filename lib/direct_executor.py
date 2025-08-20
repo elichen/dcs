@@ -16,7 +16,7 @@ from .fetch_protocol import StateHelper
 class DirectExecutor:
     """Executes robot control commands directly in-process with zero IPC overhead."""
     
-    def __init__(self, env, model, data, env_lock=None, cv_window_name=None, show_ui=True):
+    def __init__(self, env, model, data, env_lock=None, cv_window_name=None, show_ui=True, gif_capture_callback=None):
         """
         Initialize direct executor.
         
@@ -27,6 +27,7 @@ class DirectExecutor:
             env_lock: Threading lock for environment synchronization
             cv_window_name: OpenCV window name for direct rendering
             show_ui: Whether to show UI
+            gif_capture_callback: Optional callback to capture frames for GIF recording
         """
         self.env = env
         self.model = model
@@ -34,6 +35,7 @@ class DirectExecutor:
         self.env_lock = env_lock
         self.cv_window_name = cv_window_name
         self.show_ui = show_ui
+        self.gif_capture_callback = gif_capture_callback
         
         # Control parameters
         self.k_p = 10.0  # Proportional gain
@@ -81,19 +83,22 @@ class DirectExecutor:
         return True  # Default to open
     
     def _render_if_needed(self):
-        """Render frame immediately for real-time animation."""
-        if not self.show_ui or not self.cv_window_name:
-            return
-            
+        """Render frame immediately for real-time animation and GIF capture."""
         try:
             import cv2
             # Render frame directly
             frame = self.env.render()
             if frame is not None:
-                # Convert RGB to BGR for OpenCV
-                frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
-                cv2.imshow(self.cv_window_name, frame_bgr)
-                cv2.waitKey(1)  # Non-blocking window update
+                # Capture frame for GIF if callback is provided
+                if self.gif_capture_callback:
+                    self.gif_capture_callback(frame.copy())
+                
+                # Display frame if UI is enabled
+                if self.show_ui and self.cv_window_name:
+                    # Convert RGB to BGR for OpenCV
+                    frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+                    cv2.imshow(self.cv_window_name, frame_bgr)
+                    cv2.waitKey(1)  # Non-blocking window update
         except Exception as e:
             # Silently fail to avoid disrupting robot control
             pass
