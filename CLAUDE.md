@@ -51,6 +51,9 @@ bin/lift $SESSION 0.15
 
 # Move above position (approach)
 bin/approach $SESSION 1.3 0.8 0.4
+
+# Make robot wave (friendly greeting)
+bin/wave $SESSION [cycles] [speed]
 ```
 
 #### Information Retrieval
@@ -116,6 +119,7 @@ dcs/
 │   ├── approach                     # Move above position
 │   ├── pick                         # Complete pick sequence
 │   ├── place                        # Complete place sequence
+│   ├── wave                         # Perform waving motion
 │   ├── status                       # Get robot state
 │   ├── object                       # Get object position
 │   └── target                       # Get target position
@@ -231,6 +235,12 @@ bin/move $SESSION 1.3 0.8 0.43
 bin/grip $SESSION close
 bin/lift $SESSION 0.15
 
+# Friendly wave gesture (3 cycles at normal speed)
+bin/wave $SESSION
+
+# Fast wave with more cycles
+bin/wave $SESSION 5 2.0
+
 # Clean up
 bin/env stop $SESSION
 ```
@@ -327,3 +337,6 @@ The DCS provides you with immediate, precise control over the Fetch robot withou
 - Zero training time
 
 Remember: This system achieves 100% success rate on tasks that RL struggles to learn even after 90 minutes of training.
+- remember that target hits should the y-component.
+- you don't need to prepend pythonpath
+- sessions should be run in background

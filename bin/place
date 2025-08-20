@@ -13,11 +13,18 @@ import sys
 import os
 import json
 import subprocess
+import numpy as np
+from typing import Tuple
 
 # Add parent directory to Python path
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
 from lib.fetch_session import SessionManager
+from lib.control_algorithms import MovementExecutor, lift_by_height
+from lib.fetch_protocol import StateHelper
+
+# Set to True to use direct library calls instead of subprocess
+USE_DIRECT_CONTROL = True
 
 def run_tool(tool_name, *args):
     """Run a fetch tool and return the result."""
@@ -34,6 +41,57 @@ def run_tool(tool_name, *args):
             return {"success": False, "message": f"No output from {tool_name}"}
     except Exception as e:
         return {"success": False, "message": f"Failed to run {tool_name}: {str(e)}"}
+
+def perform_place_sequence_direct(session_id: str, x: float, y: float, z: float) -> Tuple[bool, str, list]:
+    """
+    Perform place sequence using direct control library calls.
+    
+    Args:
+        session_id: Target session ID
+        x, y, z: Target position coordinates
+        
+    Returns:
+        (success, message, sequence_results)
+    """
+    sequence_results = []
+    
+    try:
+        # Create movement executor
+        executor = MovementExecutor(SessionManager, session_id)
+        target_pos = np.array([x, y, z])
+        
+        # Step 1: Transport above placement position (maintain grip)
+        transport_pos = target_pos + np.array([0, 0, 0.10])  # 10cm above
+        success, message = executor.move_to_position(transport_pos, max_steps=30, maintain_grip=True)
+        sequence_results.append({"step": "transport", "result": {"success": success, "message": message, "target_position": target_pos.tolist(), "approach_position": transport_pos.tolist()}})
+        if not success:
+            return False, f"Failed to transport to position: {message}", sequence_results
+        
+        # Step 2: Lower to placement position (maintain grip)
+        place_pos = target_pos + np.array([0, 0, 0.05])  # 5cm above placement surface
+        success, message = executor.move_to_position(place_pos, max_steps=30, maintain_grip=True)
+        sequence_results.append({"step": "lower", "result": {"success": success, "message": message, "target_position": place_pos.tolist()}})
+        if not success:
+            return False, f"Failed to lower to placement position: {message}", sequence_results
+        
+        # Step 3: Open gripper (release)
+        success, message = executor.control_gripper(True)
+        sequence_results.append({"step": "release", "result": {"success": success, "message": message}})
+        if not success:
+            return False, f"Failed to release object: {message}", sequence_results
+        
+        # Step 4: Retract gripper
+        success, message = lift_by_height(executor, 0.10)  # 10cm retraction
+        sequence_results.append({"step": "retract", "result": {"success": success, "message": message}})
+        if not success:
+            return False, f"Failed to retract gripper: {message}", sequence_results
+        
+        return True, "Place sequence completed successfully", sequence_results
+        
+    except Exception as e:
+        error_result = {"step": "error", "result": {"success": False, "message": str(e)}}
+        sequence_results.append(error_result)
+        return False, f"Place sequence failed: {str(e)}", sequence_results
 
 def main():
     if len(sys.argv) != 5:
@@ -58,46 +116,53 @@ def main():
         print(json.dumps(result))
         return 1
     
-    # Execute place sequence
-    sequence_results = []
-    overall_success = True
-    
-    # Step 1: Transport above placement position (force grip maintenance)
-    transport_pos = [float(x), float(y), float(z) + 0.10]
-    command = {"action": "move_with_grip", "position": transport_pos}
-    success, message = SessionManager.send_command(session_id, command)
-    result = {"success": success, "message": message, "target_position": [float(x), float(y), float(z)], "approach_position": transport_pos}
-    sequence_results.append({"step": "transport", "result": result})
-    if not success:
-        overall_success = False
-    
-    # Step 2: Lower to placement position (force grip maintenance) 
-    if overall_success:
-        place_pos = [float(x), float(y), float(z) + 0.05]  # 5cm above placement surface
-        command = {"action": "move_with_grip", "position": place_pos}
-        success, message = SessionManager.send_command(session_id, command)
-        result = {"success": success, "message": message, "target_position": place_pos}
-        sequence_results.append({"step": "lower", "result": result})
-        if not success:
-            overall_success = False
-    
-    # Step 3: Open gripper (release)
-    if overall_success:
-        result = run_tool("grip", session_id, "open")
-        sequence_results.append({"step": "release", "result": result})
+    # Execute place sequence using either direct control or subprocess approach
+    if USE_DIRECT_CONTROL:
+        overall_success, message, sequence_results = perform_place_sequence_direct(
+            session_id, float(x), float(y), float(z)
+        )
+    else:
+        # Use subprocess approach (fallback for compatibility)
+        sequence_results = []
+        overall_success = True
+        
+        # Step 1: Transport above placement position using move tool (maintain grip)
+        transport_pos = [float(x), float(y), float(z) + 0.10]
+        result = run_tool("move", session_id, str(transport_pos[0]), str(transport_pos[1]), str(transport_pos[2]))
+        result["target_position"] = [float(x), float(y), float(z)]
+        result["approach_position"] = transport_pos
+        sequence_results.append({"step": "transport", "result": result})
         if not result.get("success", False):
             overall_success = False
-    
-    # Step 4: Retract gripper
-    if overall_success:
-        result = run_tool("lift", session_id, "0.10")
-        sequence_results.append({"step": "retract", "result": result})
-        if not result.get("success", False):
-            overall_success = False
+        
+        # Step 2: Lower to placement position using move tool (maintain grip)
+        if overall_success:
+            place_pos = [float(x), float(y), float(z) + 0.05]  # 5cm above placement surface
+            result = run_tool("move", session_id, str(place_pos[0]), str(place_pos[1]), str(place_pos[2]))
+            result["target_position"] = place_pos
+            sequence_results.append({"step": "lower", "result": result})
+            if not result.get("success", False):
+                overall_success = False
+        
+        # Step 3: Open gripper (release)
+        if overall_success:
+            result = run_tool("grip", session_id, "open")
+            sequence_results.append({"step": "release", "result": result})
+            if not result.get("success", False):
+                overall_success = False
+        
+        # Step 4: Retract gripper
+        if overall_success:
+            result = run_tool("lift", session_id, "0.10")
+            sequence_results.append({"step": "retract", "result": result})
+            if not result.get("success", False):
+                overall_success = False
+        
+        message = "Place sequence completed" if overall_success else "Place sequence failed"
     
     final_result = {
         "success": overall_success,
-        "message": "Place sequence completed" if overall_success else "Place sequence failed",
+        "message": message,
         "target_position": [float(x), float(y), float(z)],
         "sequence_results": sequence_results
     }

@@ -1,0 +1,159 @@
+#!/usr/bin/env python3
+"""
+fetch-wave - Make Fetch robot wave in a friendly greeting motion
+
+Usage:
+    fetch-wave <session-id> [cycles] [speed]
+    
+Parameters:
+    session-id: ID of the active robot session
+    cycles: Number of wave cycles (default: 3)
+    speed: Wave speed factor (default: 1.0, higher = faster)
+    
+Output:
+    JSON with success status and message
+"""
+
+import sys
+import os
+import json
+import time
+import numpy as np
+from typing import Tuple
+
+# Add parent directory to Python path
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+
+from lib.fetch_session import SessionManager
+from lib.control_algorithms import MovementExecutor, TrajectoryPlanner
+from lib.fetch_protocol import StateHelper
+
+def perform_wave_motion(session_id: str, cycles: int, speed: float) -> Tuple[bool, str]:
+    """
+    Perform wave motion using the low-level control protocol.
+    
+    Args:
+        session_id: Target session ID
+        cycles: Number of wave cycles
+        speed: Wave speed factor
+        
+    Returns:
+        (success, message)
+    """
+    try:
+        # Create movement executor
+        executor = MovementExecutor(SessionManager, session_id)
+        
+        # Get initial state
+        state = SessionManager.get_session_state(session_id)
+        if not state:
+            return False, "Could not get initial session state"
+        
+        initial_position = StateHelper.extract_gripper_position(state)
+        if initial_position is None:
+            return False, "Could not extract initial gripper position"
+        
+        print(f"📍 Starting wave from position: {initial_position}")
+        
+        # Set wrist orientation to point gripper up
+        success, message = executor.set_joint_angle("robot0:wrist_flex_joint", -1.5)
+        if not success:
+            return False, f"Failed to set gripper orientation: {message}"
+        
+        print("🔝 Gripper now pointing UP!")
+        
+        # Calculate wave center position (elevated for clock motion)
+        center_pos = initial_position.copy()
+        center_pos[2] = max(initial_position[2], 0.65)  # Minimum height for clock motion
+        
+        # Move to wave starting position
+        success, message = executor.move_to_position(center_pos, max_steps=30)
+        if not success:
+            return False, f"Failed to reach wave starting position: {message}"
+        
+        # Generate wave trajectory
+        planner = TrajectoryPlanner()
+        wave_waypoints = planner.plan_wave_trajectory(center_pos, cycles, radius=0.04)
+        
+        print(f"🌊 Starting {cycles} wave cycles with {len(wave_waypoints)} waypoints")
+        
+        # Execute wave trajectory
+        for i, waypoint in enumerate(wave_waypoints):
+            success, message = executor.move_to_position(
+                waypoint, max_steps=15, step_delay=0.02
+            )
+            if not success:
+                return False, f"Wave failed at waypoint {i}: {message}"
+            
+            # Control wave speed
+            time.sleep(0.1 / speed)
+        
+        # Restore original wrist orientation (approximately)
+        success, message = executor.set_joint_angle("robot0:wrist_flex_joint", 0.0)
+        if success:
+            print("🔧 Restored gripper to normal orientation")
+        else:
+            print(f"⚠️ Warning: Could not restore wrist orientation: {message}")
+        
+        # Return to initial position
+        print("🏠 Returning to initial position...")
+        success, message = executor.move_to_position(initial_position, max_steps=50)
+        if not success:
+            print(f"⚠️ Warning: Could not return to exact initial position: {message}")
+        else:
+            print("✅ Successfully returned to initial position")
+        
+        return True, f"🕐 Completed {cycles} clock hand waves at speed {speed}x!"
+        
+    except Exception as e:
+        return False, f"Wave motion failed: {str(e)}"
+
+def main():
+    if len(sys.argv) < 2 or len(sys.argv) > 4:
+        print("Usage: fetch-wave <session-id> [cycles] [speed]", file=sys.stderr)
+        return 1
+    
+    session_id = sys.argv[1]
+    
+    # Parse optional parameters
+    try:
+        cycles = int(sys.argv[2]) if len(sys.argv) > 2 else 3
+        speed = float(sys.argv[3]) if len(sys.argv) > 3 else 1.0
+    except ValueError:
+        result = {"success": False, "message": "Invalid parameters: cycles must be integer, speed must be float"}
+        print(json.dumps(result))
+        return 1
+    
+    # Validate parameters
+    if cycles < 1 or cycles > 10:
+        result = {"success": False, "message": "Cycles must be between 1 and 10"}
+        print(json.dumps(result))
+        return 1
+        
+    if speed <= 0 or speed > 5.0:
+        result = {"success": False, "message": "Speed must be between 0.1 and 5.0"}
+        print(json.dumps(result))
+        return 1
+    
+    # Check if session exists
+    state = SessionManager.get_session_state(session_id)
+    if not state:
+        result = {"success": False, "message": f"Session {session_id} not found"}
+        print(json.dumps(result))
+        return 1
+    
+    # Execute wave using the new control algorithm
+    success, message = perform_wave_motion(session_id, cycles, speed)
+    
+    result = {
+        "success": success,
+        "message": message,
+        "cycles": cycles,
+        "speed": speed
+    }
+    
+    print(json.dumps(result))
+    return 0 if success else 1
+
+if __name__ == '__main__':
+    sys.exit(main())

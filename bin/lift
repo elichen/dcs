@@ -12,11 +12,36 @@ Output:
 import sys
 import os
 import json
+from typing import Tuple
 
 # Add parent directory to Python path
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
 from lib.fetch_session import SessionManager
+from lib.control_algorithms import lift_by_height, MovementExecutor
+
+def perform_lift_motion(session_id: str, height: float) -> Tuple[bool, str]:
+    """
+    Lift gripper by specified height using the low-level control protocol.
+    
+    Args:
+        session_id: Target session ID
+        height: Height to lift in meters
+        
+    Returns:
+        (success, message)
+    """
+    try:
+        # Create movement executor
+        executor = MovementExecutor(SessionManager, session_id)
+        
+        # Execute lift motion
+        success, message = lift_by_height(executor, height)
+        
+        return success, message
+        
+    except Exception as e:
+        return False, f"Lift motion failed: {str(e)}"
 
 def main():
     if len(sys.argv) != 3:
@@ -39,13 +64,8 @@ def main():
         print(json.dumps(result))
         return 1
     
-    # Send lift command
-    command = {
-        "action": "lift",
-        "height": height
-    }
-    
-    success, message = SessionManager.send_command(session_id, command)
+    # Execute lift using the new control algorithm
+    success, message = perform_lift_motion(session_id, height)
     
     result = {
         "success": success,

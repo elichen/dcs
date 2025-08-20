@@ -12,11 +12,50 @@ Output:
 import sys
 import os
 import json
+import numpy as np
+from typing import Tuple
 
 # Add parent directory to Python path
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
 from lib.fetch_session import SessionManager
+from lib.control_algorithms import MovementExecutor
+from lib.fetch_protocol import StateHelper
+
+def perform_move_to_position(session_id: str, target_position: list) -> Tuple[bool, str]:
+    """
+    Move gripper to target position using the low-level control protocol.
+    
+    Args:
+        session_id: Target session ID
+        target_position: [x, y, z] target position
+        
+    Returns:
+        (success, message)
+    """
+    try:
+        # Check current gripper state to decide if we need to maintain grip
+        current_state = SessionManager.get_session_state(session_id)
+        if not current_state:
+            return False, "Could not get session state"
+        
+        gripper_closed = not current_state.get('robot', {}).get('gripper_open', True)
+        
+        # Create movement executor
+        executor = MovementExecutor(SessionManager, session_id)
+        
+        # Execute movement
+        target_pos = np.array(target_position)
+        success, message = executor.move_to_position(
+            target_pos, 
+            max_steps=50, 
+            maintain_grip=gripper_closed
+        )
+        
+        return success, message
+        
+    except Exception as e:
+        return False, f"Move operation failed: {str(e)}"
 
 def main():
     if len(sys.argv) != 5:
@@ -39,17 +78,8 @@ def main():
         print(json.dumps(result))
         return 1
     
-    # Check current gripper state to decide if we need to maintain grip
-    current_state = SessionManager.get_session_state(session_id)
-    gripper_closed = current_state and not current_state.get('robot', {}).get('gripper_open', True)
-    
-    # Send move command (with grip maintained if gripper is closed)
-    command = {
-        "action": "move_with_grip" if gripper_closed else "move",
-        "position": [x, y, z]
-    }
-    
-    success, message = SessionManager.send_command(session_id, command)
+    # Execute move using the new control algorithm
+    success, message = perform_move_to_position(session_id, [x, y, z])
     
     result = {
         "success": success,
