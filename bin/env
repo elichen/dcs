@@ -3,7 +3,7 @@
 fetch-env - Environment manager for Fetch robot sessions
 
 Usage:
-    fetch-env start [--no-ui]    # Start new session
+    fetch-env start             # Start new session
     fetch-env stop <session-id>  # Stop session
     fetch-env list              # List active sessions
     fetch-env clean             # Clean up dead sessions
@@ -12,6 +12,7 @@ Usage:
 import sys
 import os
 import time
+import signal
 import argparse
 import subprocess
 
@@ -21,34 +22,29 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'
 from lib.fetch_session import SessionManager, FetchSession
 
 def start_session(show_ui=True):
-    """Start a new fetch session."""
+    """Start a new fetch session in foreground."""
     session_id = SessionManager.create_session(show_ui)
     
-    # Fork a process to run the session
-    pid = os.fork()
-    if pid == 0:  # Child process
-        try:
-            # Set up environment
-            os.environ['PYTHONPATH'] = f"{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}:{os.environ.get('PYTHONPATH', '')}"
-            
-            # Create and run session
-            session = FetchSession(session_id, show_ui)
-            session.run_session()
-        except Exception as e:
-            print(f"Session {session_id} failed: {e}")
-            sys.exit(1)
-    else:  # Parent process
-        # Wait a moment for session to initialize
-        time.sleep(2)
+    try:
+        # Set up environment
+        os.environ['PYTHONPATH'] = f"{os.path.dirname(os.path.dirname(os.path.abspath(__file__)))}:{os.environ.get('PYTHONPATH', '')}"
         
-        # Verify session started
-        sessions = SessionManager.list_sessions()
-        if any(s['id'] == session_id for s in sessions):
-            print(session_id)  # Output just the session ID for scripting
-            return 0
-        else:
-            print(f"Failed to start session {session_id}", file=sys.stderr)
-            return 1
+        # Create and run session
+        session = FetchSession(session_id, show_ui)
+        print(session_id)  # Output session ID first
+        session.run_session()  # This blocks until session ends
+        
+    except KeyboardInterrupt:
+        print(f"\n💡 Session {session_id} interrupted")
+        return 0
+    except Exception as e:
+        print(f"❌ Session {session_id} failed: {e}")
+        # Ensure cleanup on error
+        try:
+            session.cleanup()
+        except:
+            pass
+        return 1
 
 def stop_session(session_id):
     """Stop a specific session."""
@@ -127,7 +123,6 @@ def main():
     
     # Start command
     start_parser = subparsers.add_parser('start', help='Start a new session')
-    start_parser.add_argument('--no-ui', action='store_true', help='Start without UI window')
     
     # Stop command
     stop_parser = subparsers.add_parser('stop', help='Stop a session')
@@ -147,7 +142,7 @@ def main():
     
     try:
         if args.command == 'start':
-            return start_session(show_ui=not args.no_ui)
+            return start_session(show_ui=True)
         elif args.command == 'stop':
             return stop_session(args.session_id)
         elif args.command == 'list':

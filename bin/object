@@ -16,7 +16,7 @@ import json
 # Add parent directory to Python path
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
-from lib.fetch_session import SessionManager
+from lib.fetch_api import FetchAPI
 
 def main():
     if len(sys.argv) != 2:
@@ -25,22 +25,20 @@ def main():
     
     session_id = sys.argv[1]
     
-    # Get session state
-    state = SessionManager.get_session_state(session_id)
-    if not state:
-        result = {"success": False, "message": f"Session {session_id} not found"}
-        print(json.dumps(result))
-        return 1
-    
-    object_pos = state.get("environment", {}).get("object_position", [0, 0, 0])
-    
-    result = {
-        "success": True,
-        "position": object_pos,
-        "x": object_pos[0],
-        "y": object_pos[1], 
-        "z": object_pos[2]
-    }
+    # Get object position using Direct API
+    try:
+        api = FetchAPI.connect(session_id)
+        object_pos = api.get_object_position()
+        
+        result = {
+            "success": True,
+            "position": object_pos,
+            "x": object_pos[0],
+            "y": object_pos[1], 
+            "z": object_pos[2]
+        }
+    except Exception as e:
+        result = {"success": False, "message": f"Direct API failed: {str(e)}"}
     
     print(json.dumps(result))
     return 0

@@ -1,0 +1,101 @@
+#!/usr/bin/env python3
+"""
+fetch-exec - Execute Python code within Fetch robot session process
+
+Usage:
+    fetch-exec <session-id> <python-code>
+    fetch-exec <session-id> --file <script-file>
+    
+Examples:
+    # Execute inline code
+    fetch-exec abc123 "executor.control_gripper(True); print('Gripper opened')"
+    
+    # Execute from file
+    fetch-exec abc123 --file pick_sequence.py
+    
+Output:
+    JSON with execution results
+"""
+
+import sys
+import os
+import json
+import argparse
+from pathlib import Path
+
+# Add parent directory to Python path
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+
+from lib.fetch_session import SessionManager
+from lib.fetch_protocol import create_embedded_script_command
+
+def main():
+    parser = argparse.ArgumentParser(description='Execute Python code within Fetch session')
+    parser.add_argument('session_id', help='Session ID')
+    parser.add_argument('code', nargs='?', help='Python code to execute')
+    parser.add_argument('--file', '-f', help='Python file to execute')
+    parser.add_argument('--timeout', '-t', type=int, default=60, help='Timeout in seconds (default: 60)')
+    
+    args = parser.parse_args()
+    
+    # Get script code
+    if args.file:
+        script_path = Path(args.file)
+        if not script_path.exists():
+            result = {"success": False, "message": f"Script file not found: {args.file}"}
+            print(json.dumps(result))
+            return 1
+        
+        try:
+            with open(script_path, 'r') as f:
+                script_code = f.read()
+        except Exception as e:
+            result = {"success": False, "message": f"Failed to read script file: {e}"}
+            print(json.dumps(result))
+            return 1
+    elif args.code:
+        script_code = args.code
+    else:
+        result = {"success": False, "message": "Must provide either code or --file"}
+        print(json.dumps(result))
+        return 1
+    
+    # Check if session exists
+    state = SessionManager.get_session_state(args.session_id)
+    if not state:
+        result = {"success": False, "message": f"Session {args.session_id} not found"}
+        print(json.dumps(result))
+        return 1
+    
+    # Execute embedded script
+    try:
+        command = create_embedded_script_command(script_code)
+        
+        # Temporarily increase timeout for the SessionManager
+        original_timeout = getattr(SessionManager, '_timeout', None)
+        SessionManager._timeout = args.timeout
+        
+        success, response = SessionManager.send_command(args.session_id, command)
+        
+        # Restore original timeout
+        if original_timeout is not None:
+            SessionManager._timeout = original_timeout
+        
+        if success:
+            # Parse JSON response
+            try:
+                result_data = json.loads(response)
+                result = {"success": True, "result": result_data}
+            except json.JSONDecodeError:
+                result = {"success": True, "result": response}
+        else:
+            result = {"success": False, "message": response}
+            
+    except Exception as e:
+        result = {"success": False, "message": f"Execution failed: {str(e)}"}
+    
+    print(json.dumps(result, indent=2))
+    return 0 if result["success"] else 1
+
+if __name__ == '__main__':
+    sys.exit(main())

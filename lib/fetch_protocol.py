@@ -18,6 +18,8 @@ class CommandType(Enum):
     GET_STATE = "get_state"            # Return full environment state
     SET_JOINT = "set_joint"            # Direct joint manipulation
     RESET = "reset"                    # Reset environment
+    DIRECT_API_CALL = "direct_api_call"  # Execute Direct API method
+    EMBEDDED_SCRIPT = "embedded_script"  # Execute Python code within session
 
 
 class StateQuery(Enum):
@@ -111,6 +113,44 @@ def create_reset_command() -> Dict[str, Any]:
     """
     return {
         "action": CommandType.RESET.value
+    }
+
+
+def create_direct_api_command(method: str, *args, **kwargs) -> Dict[str, Any]:
+    """
+    Create a command to execute a Direct API method within the session process.
+    
+    Args:
+        method: Name of the DirectExecutor method to call
+        *args: Positional arguments for the method
+        **kwargs: Keyword arguments for the method
+    
+    Returns:
+        Command dictionary for SessionManager.send_command()
+    """
+    return {
+        "action": CommandType.DIRECT_API_CALL.value,
+        "method": method,
+        "args": list(args),
+        "kwargs": kwargs
+    }
+
+
+def create_embedded_script_command(script_code: str, script_globals: Dict[str, Any] = None) -> Dict[str, Any]:
+    """
+    Create a command to execute Python code within the session process.
+    
+    Args:
+        script_code: Python code to execute
+        script_globals: Global variables to make available to the script
+    
+    Returns:
+        Command dictionary for SessionManager.send_command()
+    """
+    return {
+        "action": CommandType.EMBEDDED_SCRIPT.value,
+        "script_code": script_code,
+        "script_globals": script_globals or {}
     }
 
 

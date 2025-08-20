@@ -19,91 +19,8 @@ from typing import Tuple
 # Add parent directory to Python path
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
-from lib.fetch_session import SessionManager
-from lib.control_algorithms import MovementExecutor, lift_by_height
-from lib.fetch_protocol import StateHelper
+from lib.fetch_api import FetchAPI
 
-# Set to True to use direct library calls instead of subprocess
-USE_DIRECT_CONTROL = True
-
-def run_tool(tool_name, *args):
-    """Run a fetch tool and return the result."""
-    try:
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        tool_path = os.path.join(script_dir, tool_name)
-        
-        result = subprocess.run([tool_path] + list(args), 
-                              capture_output=True, text=True, check=False)
-        
-        if result.stdout.strip():
-            return json.loads(result.stdout)
-        else:
-            return {"success": False, "message": f"No output from {tool_name}"}
-    except Exception as e:
-        return {"success": False, "message": f"Failed to run {tool_name}: {str(e)}"}
-
-def perform_pick_sequence_direct(session_id: str, x: float, y: float, z: float) -> Tuple[bool, str, list]:
-    """
-    Perform pick sequence using direct control library calls.
-    
-    Args:
-        session_id: Target session ID
-        x, y, z: Target position coordinates
-        
-    Returns:
-        (success, message, sequence_results)
-    """
-    sequence_results = []
-    
-    try:
-        # Create movement executor
-        executor = MovementExecutor(SessionManager, session_id)
-        target_pos = np.array([x, y, z])
-        
-        # Step 1: Open gripper
-        success, message = executor.control_gripper(True)
-        sequence_results.append({"step": "open_gripper", "result": {"success": success, "message": message}})
-        if not success:
-            return False, f"Failed to open gripper: {message}", sequence_results
-        
-        # Step 2: Approach position (10cm above)
-        approach_pos = target_pos + np.array([0, 0, 0.1])
-        success, message = executor.move_to_position(approach_pos, max_steps=30)
-        sequence_results.append({"step": "approach", "result": {"success": success, "message": message}})
-        if not success:
-            return False, f"Failed to approach position: {message}", sequence_results
-        
-        # Step 3: Move to grasp position (5mm above object center)
-        grasp_pos = target_pos + np.array([0, 0, 0.005])
-        success, message = executor.move_to_position(grasp_pos, max_steps=30)
-        sequence_results.append({"step": "descend", "result": {"success": success, "message": message}})
-        if not success:
-            return False, f"Failed to descend to grasp position: {message}", sequence_results
-        
-        # Step 4: Close gripper
-        success, message = executor.control_gripper(False)
-        sequence_results.append({"step": "close_gripper", "result": {"success": success, "message": message}})
-        if not success:
-            return False, f"Failed to close gripper: {message}", sequence_results
-        
-        # Step 5: Small test lift to verify grip
-        success, message = lift_by_height(executor, 0.02)  # 2cm test lift
-        sequence_results.append({"step": "test_lift", "result": {"success": success, "message": message}})
-        if not success:
-            return False, f"Failed test lift: {message}", sequence_results
-        
-        # Step 6: Full lift 
-        success, message = lift_by_height(executor, 0.13)  # Additional 13cm (total 15cm)
-        sequence_results.append({"step": "full_lift", "result": {"success": success, "message": message}})
-        if not success:
-            return False, f"Failed full lift: {message}", sequence_results
-        
-        return True, "Pick sequence completed successfully", sequence_results
-        
-    except Exception as e:
-        error_result = {"step": "error", "result": {"success": False, "message": str(e)}}
-        sequence_results.append(error_result)
-        return False, f"Pick sequence failed: {str(e)}", sequence_results
 
 def main():
     if len(sys.argv) != 5:
@@ -121,66 +38,12 @@ def main():
         print(json.dumps(result))
         return 1
     
-    # Check if session exists
-    state = SessionManager.get_session_state(session_id)
-    if not state:
-        result = {"success": False, "message": f"Session {session_id} not found"}
-        print(json.dumps(result))
-        return 1
-    
-    # Execute pick sequence using either direct control or subprocess approach
-    if USE_DIRECT_CONTROL:
-        overall_success, message, sequence_results = perform_pick_sequence_direct(
-            session_id, float(x), float(y), float(z)
-        )
-    else:
-        # Use subprocess approach (original implementation)
-        sequence_results = []
-        overall_success = True
-        
-        # Step 1: Open gripper
-        result = run_tool("grip", session_id, "open")
-        sequence_results.append({"step": "open_gripper", "result": result})
-        if not result.get("success", False):
-            overall_success = False
-        
-        # Step 2: Approach position (10cm above)
-        if overall_success:
-            result = run_tool("approach", session_id, x, y, z)
-            sequence_results.append({"step": "approach", "result": result})
-            if not result.get("success", False):
-                overall_success = False
-        
-        # Step 3: Move to grasp position (closer to object surface)
-        if overall_success:
-            grasp_z = str(float(z) + 0.005)  # 5mm above object center like working demo
-            result = run_tool("move", session_id, x, y, grasp_z)
-            sequence_results.append({"step": "descend", "result": result})
-            if not result.get("success", False):
-                overall_success = False
-        
-        # Step 4: Close gripper
-        if overall_success:
-            result = run_tool("grip", session_id, "close")
-            sequence_results.append({"step": "close_gripper", "result": result})
-            if not result.get("success", False):
-                overall_success = False
-        
-        # Step 5: Small initial lift to test grip
-        if overall_success:
-            result = run_tool("lift", session_id, "0.02")  # 2cm test lift
-            sequence_results.append({"step": "test_lift", "result": result})
-            if not result.get("success", False):
-                overall_success = False
-        
-        # Step 6: Full lift if test successful
-        if overall_success:
-            result = run_tool("lift", session_id, "0.13")  # Additional 13cm (total 15cm)
-            sequence_results.append({"step": "full_lift", "result": result})
-            if not result.get("success", False):
-                overall_success = False
-        
-        message = "Pick sequence completed" if overall_success else "Pick sequence failed"
+    # Execute pick sequence using Direct API
+    try:
+        api = FetchAPI.connect(session_id)
+        overall_success, message, sequence_results = api.pick([float(x), float(y), float(z)])
+    except Exception as e:
+        overall_success, message, sequence_results = False, f"Direct API failed: {str(e)}", []
     
     final_result = {
         "success": overall_success,

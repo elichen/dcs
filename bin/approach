@@ -18,46 +18,7 @@ from typing import Tuple
 # Add parent directory to Python path
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
-from lib.fetch_session import SessionManager
-from lib.control_algorithms import MovementExecutor
-from lib.fetch_protocol import StateHelper
-
-def perform_approach(session_id: str, x: float, y: float, z: float) -> Tuple[bool, str]:
-    """
-    Move to approach position using the low-level control protocol.
-    
-    Args:
-        session_id: Target session ID
-        x, y, z: Target position coordinates
-        
-    Returns:
-        (success, message)
-    """
-    try:
-        # Check current gripper state to decide if we need to maintain grip
-        current_state = SessionManager.get_session_state(session_id)
-        if not current_state:
-            return False, "Could not get session state"
-        
-        gripper_closed = not current_state.get('robot', {}).get('gripper_open', True)
-        
-        # Create movement executor
-        executor = MovementExecutor(SessionManager, session_id)
-        
-        # Calculate approach position (10cm above target)
-        approach_pos = np.array([x, y, z + 0.10])
-        
-        # Execute movement
-        success, message = executor.move_to_position(
-            approach_pos, 
-            max_steps=30, 
-            maintain_grip=gripper_closed
-        )
-        
-        return success, message
-        
-    except Exception as e:
-        return False, f"Approach operation failed: {str(e)}"
+from lib.fetch_api import FetchAPI
 
 def main():
     if len(sys.argv) != 5:
@@ -73,15 +34,12 @@ def main():
         print(json.dumps(result))
         return 1
     
-    # Check if session exists
-    state = SessionManager.get_session_state(session_id)
-    if not state:
-        result = {"success": False, "message": f"Session {session_id} not found"}
-        print(json.dumps(result))
-        return 1
-    
-    # Execute approach using the new control algorithm
-    success, message = perform_approach(session_id, x, y, z)
+    # Execute approach using Direct API
+    try:
+        api = FetchAPI.connect(session_id)
+        success, message = api.approach([x, y, z])
+    except Exception as e:
+        success, message = False, f"Direct API failed: {str(e)}"
     
     approach_pos = [x, y, z + 0.10]
     
