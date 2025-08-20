@@ -335,6 +335,27 @@ class FetchAPI:
         """Check if gripper is open."""
         state = self.get_state()
         return state.get('gripper_open', True)
+    
+    def capture_image(self, filename: Optional[str] = None) -> Tuple[bool, str]:
+        """
+        Capture current environment state as an image.
+        
+        Args:
+            filename: Optional filename. If not provided, auto-generates one.
+            
+        Returns:
+            (success, path_or_message)
+        """
+        if self._executor is None:
+            return False, "Not connected to session"
+        
+        success, result = self._call_direct_api("capture_image", filename)
+        if success and isinstance(result, (list, tuple)) and len(result) == 2:
+            return bool(result[0]), str(result[1])
+        elif success:
+            return True, str(result)
+        else:
+            return False, str(result)
 
 
 # Convenience functions

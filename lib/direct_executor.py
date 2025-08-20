@@ -388,6 +388,56 @@ class DirectExecutor:
         
         return waypoints
     
+    def capture_image(self, filename: Optional[str] = None) -> Tuple[bool, str]:
+        """
+        Capture current environment state as an image.
+        
+        Args:
+            filename: Optional filename. If not provided, auto-generates one.
+            
+        Returns:
+            (success, path_or_message)
+        """
+        try:
+            import cv2
+            import os
+            from pathlib import Path
+            import time
+            
+            # Create captures directory
+            captures_dir = Path.cwd() / "captures"
+            captures_dir.mkdir(exist_ok=True)
+            
+            # Generate filename if not provided
+            if filename is None:
+                timestamp = int(time.time())
+                filename = f"capture_{timestamp}.png"
+            
+            # Ensure .png extension
+            if not filename.endswith('.png'):
+                filename += '.png'
+            
+            filepath = captures_dir / filename
+            
+            # Render current frame
+            frame = self.env.render()
+            if frame is None:
+                return False, "Failed to render frame"
+            
+            # Convert RGB to BGR for OpenCV
+            frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+            
+            # Save image
+            success = cv2.imwrite(str(filepath), frame_bgr)
+            
+            if success:
+                return True, str(filepath)
+            else:
+                return False, "Failed to save image"
+                
+        except Exception as e:
+            return False, f"Image capture failed: {str(e)}"
+    
     def get_state(self) -> dict:
         """Get current robot and environment state."""
         return {

@@ -1,0 +1,57 @@
+#!/usr/bin/env python3
+"""
+capture - Capture current environment state as an image
+
+Usage:
+    capture <session-id> [filename]
+    
+Output:
+    JSON with image file path
+    
+Examples:
+    capture abc123
+    capture abc123 my_image.png
+"""
+
+import sys
+import os
+import json
+
+# Add parent directory to Python path
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
+
+from lib.fetch_api import FetchAPI
+
+def main():
+    if len(sys.argv) < 2 or len(sys.argv) > 3:
+        print("Usage: capture <session-id> [filename]", file=sys.stderr)
+        return 1
+    
+    session_id = sys.argv[1]
+    filename = sys.argv[2] if len(sys.argv) == 3 else None
+    
+    # Capture image using Direct API
+    try:
+        api = FetchAPI.connect(session_id)
+        success, path_or_message = api.capture_image(filename)
+        
+        if success:
+            result = {
+                "success": True,
+                "path": path_or_message,
+                "session_id": session_id
+            }
+        else:
+            result = {
+                "success": False,
+                "message": path_or_message,
+                "session_id": session_id
+            }
+    except Exception as e:
+        result = {"success": False, "message": f"API failed: {str(e)}"}
+    
+    print(json.dumps(result, indent=2))
+    return 0 if result.get("success", False) else 1
+
+if __name__ == '__main__':
+    sys.exit(main())
