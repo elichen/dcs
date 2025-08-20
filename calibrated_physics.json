@@ -1,0 +1,25 @@
+{
+  "calibration_data": [
+    {
+      "push_distance": 0.06,
+      "actual_movement": 0.1007,
+      "efficiency": 1.679,
+      "alignment": 0.996
+    },
+    {
+      "push_distance": 0.08,
+      "actual_movement": 0.2050,
+      "efficiency": 2.562,
+      "alignment": 0.996
+    },
+    {
+      "push_distance": 0.10,
+      "actual_movement": 0.2869,
+      "efficiency": 2.869,
+      "alignment": 0.975
+    }
+  ],
+  "avg_efficiency": 2.370,
+  "recommended_conservative_factor": 0.4,
+  "notes": "Fresh calibration data from FetchSlide environment. Objects move 1.7-2.9x the push distance."
+}

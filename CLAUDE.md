@@ -465,3 +465,5 @@ Remember: This system doesn't just achieve 100% success - it does so across unli
 - sessions can run in foreground or background
 - all CLI tools use socket communication for performance
 - env start is blocking
+- don't create some many different files. just modify existing ones
+- need to run bin/env start as a background job
