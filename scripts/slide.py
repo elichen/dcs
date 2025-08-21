@@ -59,7 +59,7 @@ def wait_for_sliding_to_stop(api, timeout=3.0, stability_threshold=0.001):
     return False
 
 def calculate_single_push(required_distance):
-    """Calculate a single, ultra-conservative push distance based on measured physics."""
+    """Calculate a single, physics-aware push distance and power based on required distance."""
     
     # Load calibrated physics data
     try:
@@ -70,22 +70,37 @@ def calculate_single_push(required_distance):
         # Fallback to measured average if file not found
         expected_efficiency = 2.370
     
-    safety_factor = 0.5  # Only push 50% to account for momentum and get closer
-    
-    # Calculate required push distance
+    # Calculate base push parameters
     base_push = required_distance / expected_efficiency
+    
+    # Determine push power and safety factor based on distance requirements
+    if required_distance < 0.02:  # Very short distance (<2cm)
+        safety_factor = 0.3
+        push_power = 0.3  # Soft push for precision
+        push_type = "precision"
+    elif required_distance < 0.05:  # Medium distance (2-5cm)
+        safety_factor = 0.4
+        push_power = 0.6  # Medium push for control
+        push_type = "controlled"
+    else:  # Long distance (>5cm)
+        safety_factor = 0.6
+        push_power = 1.0  # Hard push for momentum
+        push_type = "momentum"
+    
     conservative_push = base_push * safety_factor
     
-    # Clamp to reasonable bounds (1-6cm) - smaller range
-    return max(0.01, min(0.06, conservative_push))
-
-def execute_push(api, behind_pos, push_target, max_steps=60):
-    """Execute a single push operation."""
-    # Position behind object
-    api.move_to(behind_pos, maintain_grip=True, max_steps=30)
+    # Clamp to reasonable bounds (0.5-8cm) - expanded range for different powers
+    push_distance = max(0.005, min(0.08, conservative_push))
     
-    # Execute push
-    success, msg = api.move_to(push_target, maintain_grip=True, max_steps=max_steps)
+    return push_distance, push_power, push_type
+
+def execute_push(api, behind_pos, push_target, push_power=1.0, max_steps=60):
+    """Execute a single push operation with variable power."""
+    # Position behind object with normal speed
+    api.move_to(behind_pos, maintain_grip=True, max_steps=30, velocity_scale=0.8)
+    
+    # Execute push with specified power
+    success, msg = api.move_to(push_target, maintain_grip=True, max_steps=max_steps, velocity_scale=push_power)
     return success, msg
 
 def single_precision_push(api, obj_pos, target_pos, safe_height):
@@ -103,8 +118,8 @@ def single_precision_push(api, obj_pos, target_pos, safe_height):
     push_vector = [target_pos[0] - current_obj_pos[0], target_pos[1] - current_obj_pos[1]]
     push_unit = [push_vector[0] / required_distance, push_vector[1] / required_distance]
     
-    # Calculate conservative push distance
-    push_distance = calculate_single_push(required_distance)
+    # Calculate push parameters with variable power
+    push_distance, push_power, push_type = calculate_single_push(required_distance)
     
     # Position parameters - use calibrated values that worked
     behind_distance = 0.06  # 6cm behind for reliable contact
@@ -120,15 +135,16 @@ def single_precision_push(api, obj_pos, target_pos, safe_height):
     push_target = [push_end_x, push_end_y, push_height]
     
     print(f"📐 Push direction: [{push_unit[0]:.3f}, {push_unit[1]:.3f}]")
-    print(f"📏 Conservative push distance: {push_distance*1000:.1f}mm")
+    print(f"📏 Push distance: {push_distance*1000:.1f}mm")
+    print(f"⚡ Push power: {push_power:.1f} ({push_type})")
     print(f"📍 Behind position: [{behind_x:.3f}, {behind_y:.3f}, {push_height:.3f}]")
     print(f"🎯 Push target: [{push_end_x:.3f}, {push_end_y:.3f}, {push_height:.3f}]")
     
     # Lift to safe height first
     api.move_to([current_obj_pos[0], current_obj_pos[1], safe_height], maintain_grip=True)
     
-    # Execute the push
-    success, msg = execute_push(api, behind_pos, push_target, max_steps=60)
+    # Execute the push with calculated power
+    success, msg = execute_push(api, behind_pos, push_target, push_power=push_power, max_steps=60)
     print(f"🔄 Push result: {msg}")
     
     # Wait for sliding to completely stop

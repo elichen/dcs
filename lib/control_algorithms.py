@@ -32,7 +32,7 @@ class ProportionalController:
         self.tolerance = tolerance
     
     def compute_action(self, current_pos: np.ndarray, target_pos: np.ndarray, 
-                      maintain_grip: bool = False) -> Tuple[np.ndarray, float, bool]:
+                      maintain_grip: bool = False, velocity_scale: float = 1.0) -> Tuple[np.ndarray, float, bool]:
         """
         Compute control action to reach target position.
         
@@ -40,6 +40,7 @@ class ProportionalController:
             current_pos: Current gripper position [x, y, z]
             target_pos: Target position [x, y, z]
             maintain_grip: Whether to maintain current grip state
+            velocity_scale: Scale factor for maximum velocity (0.1-2.0, default 1.0)
             
         Returns:
             (action_vector, distance_error, reached_target)
@@ -51,7 +52,8 @@ class ProportionalController:
         if reached:
             velocity = np.zeros(3)
         else:
-            velocity = np.clip(error * self.k_p, -self.max_velocity, self.max_velocity)
+            scaled_max_velocity = self.max_velocity * velocity_scale
+            velocity = np.clip(error * self.k_p, -scaled_max_velocity, scaled_max_velocity)
         
         grip_action = 0.0  # Maintain grip by default
         if maintain_grip:
@@ -218,7 +220,8 @@ class MovementExecutor:
         self.controller = ProportionalController()
     
     def move_to_position(self, target_pos: np.ndarray, max_steps: int = 50, 
-                        maintain_grip: bool = False, step_delay: float = 0.02) -> Tuple[bool, str]:
+                        maintain_grip: bool = False, step_delay: float = 0.02,
+                        velocity_scale: float = 1.0) -> Tuple[bool, str]:
         """
         Move gripper to target position using proportional control.
         
@@ -227,6 +230,7 @@ class MovementExecutor:
             max_steps: Maximum number of control steps
             maintain_grip: Whether to maintain gripper closed
             step_delay: Delay between control steps
+            velocity_scale: Scale factor for maximum velocity (0.1-2.0, default 1.0)
             
         Returns:
             (success, message)
@@ -243,7 +247,7 @@ class MovementExecutor:
             
             # Compute control action
             action, distance, reached = self.controller.compute_action(
-                current_pos, target_pos, maintain_grip
+                current_pos, target_pos, maintain_grip, velocity_scale
             )
             
             if reached:
@@ -331,13 +335,14 @@ class MovementExecutor:
         return self.session_manager.send_command(self.session_id, command)
 
 
-def lift_by_height(executor: MovementExecutor, height: float) -> Tuple[bool, str]:
+def lift_by_height(executor: MovementExecutor, height: float, velocity_scale: float = 1.0) -> Tuple[bool, str]:
     """
     Lift gripper by specified height while maintaining grip.
     
     Args:
         executor: MovementExecutor instance
         height: Height to lift in meters
+        velocity_scale: Scale factor for maximum velocity (0.1-2.0, default 1.0)
         
     Returns:
         (success, message)
@@ -355,4 +360,4 @@ def lift_by_height(executor: MovementExecutor, height: float) -> Tuple[bool, str
     target_pos = current_pos + np.array([0, 0, height])
     
     # Execute movement with grip maintained
-    return executor.move_to_position(target_pos, maintain_grip=True)
+    return executor.move_to_position(target_pos, maintain_grip=True, velocity_scale=velocity_scale)

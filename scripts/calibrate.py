@@ -25,10 +25,10 @@ def calculate_distance(pos1, pos2):
     """Calculate Euclidean distance between two positions."""
     return math.sqrt(sum((a - b)**2 for a, b in zip(pos1, pos2)))
 
-def single_push_test(session_id, push_distance):
-    """Test a single push distance with proper contact verification."""
+def single_push_test(session_id, push_distance, push_power=0.6):
+    """Test a single push distance and power with proper contact verification."""
     
-    print(f"🧪 Testing {push_distance*1000:.0f}mm push with session {session_id}")
+    print(f"🧪 Testing {push_distance*1000:.0f}mm push at {push_power:.1f} power with session {session_id}")
     
     api = FetchAPI.connect(session_id)
     
@@ -69,11 +69,11 @@ def single_push_test(session_id, push_distance):
     initial_obj_pos = obj_pos.copy()
     
     # Execute push sequence
-    # 1. Position behind object
-    api.move_to([behind_x, behind_y, push_height], maintain_grip=True, max_steps=40)
+    # 1. Position behind object with normal speed
+    api.move_to([behind_x, behind_y, push_height], maintain_grip=True, max_steps=40, velocity_scale=0.8)
     
-    # 2. Push through object
-    success, msg = api.move_to([push_end_x, push_end_y, push_height], maintain_grip=True, max_steps=60)
+    # 2. Push through object with specified power
+    success, msg = api.move_to([push_end_x, push_end_y, push_height], maintain_grip=True, max_steps=60, velocity_scale=push_power)
     print(f"🔄 Push result: {msg}")
     
     # 3. Wait for sliding to stop
@@ -90,10 +90,12 @@ def single_push_test(session_id, push_distance):
     efficiency = actual_movement / push_distance if push_distance > 0 else 0
     
     print(f"📊 Results:")
+    print(f"   Push power: {push_power:.1f}")
     print(f"   Initial object: [{initial_obj_pos[0]:.3f}, {initial_obj_pos[1]:.3f}]")
     print(f"   Final object: [{final_obj_pos[0]:.3f}, {final_obj_pos[1]:.3f}]")
     print(f"   Movement: {actual_movement*1000:.1f}mm")
     print(f"   Efficiency: {efficiency:.3f}")
+    print(f"   Power-adjusted efficiency: {efficiency/push_power:.3f}")
     
     # Check if push was toward target
     movement_vector = [final_obj_pos[0] - initial_obj_pos[0], final_obj_pos[1] - initial_obj_pos[1]]
@@ -114,8 +116,10 @@ def single_push_test(session_id, push_distance):
     
     return {
         'push_distance': push_distance,
+        'push_power': push_power,
         'actual_movement': actual_movement,
         'efficiency': efficiency,
+        'power_adjusted_efficiency': efficiency / push_power,
         'alignment': alignment,
         'valid': valid_push,
         'initial_pos': initial_obj_pos,
@@ -123,22 +127,31 @@ def single_push_test(session_id, push_distance):
     }
 
 if __name__ == "__main__":
-    if len(sys.argv) != 3:
-        print("Usage: python scripts/calibrate_simple.py <session-id> <push-distance-mm>")
-        print("Example: python scripts/calibrate_simple.py abc12345 80")
+    if len(sys.argv) < 3 or len(sys.argv) > 4:
+        print("Usage: python scripts/calibrate.py <session-id> <push-distance-mm> [push-power]")
+        print("Example: python scripts/calibrate.py abc12345 60 0.6")
+        print("Push power: 0.3 (soft), 0.6 (medium), 1.0 (hard), default 0.6")
         sys.exit(1)
     
     session_id = sys.argv[1]
     push_distance_mm = float(sys.argv[2])
     push_distance = push_distance_mm / 1000.0  # Convert to meters
     
-    result = single_push_test(session_id, push_distance)
+    push_power = 0.6  # default medium power
+    if len(sys.argv) == 4:
+        push_power = float(sys.argv[3])
+        if not (0.1 <= push_power <= 2.0):
+            print("Error: Push power must be between 0.1 and 2.0")
+            sys.exit(1)
+    
+    result = single_push_test(session_id, push_distance, push_power)
     
     print(f"\n{'='*50}")
     if result['valid']:
         print(f"✅ Valid calibration data collected!")
-        print(f"📈 {push_distance_mm:.0f}mm push → {result['actual_movement']*1000:.1f}mm movement")
-        print(f"🎯 Efficiency: {result['efficiency']:.3f}")
+        print(f"📈 {push_distance_mm:.0f}mm push at {result['push_power']:.1f} power → {result['actual_movement']*1000:.1f}mm movement")
+        print(f"🎯 Raw efficiency: {result['efficiency']:.3f}")
+        print(f"⚡ Power-adjusted efficiency: {result['power_adjusted_efficiency']:.3f}")
     else:
         print(f"❌ Invalid push - poor contact or wrong direction")
     print(f"{'='*50}")

@@ -77,7 +77,7 @@ class FetchAPI:
         return cls(session_id)
     
     def move_to(self, position: List[float], maintain_grip: bool = False, 
-               max_steps: int = 50) -> Tuple[bool, str]:
+               max_steps: int = 50, velocity_scale: float = 1.0) -> Tuple[bool, str]:
         """
         Move gripper to target position.
         
@@ -85,6 +85,7 @@ class FetchAPI:
             position: Target position [x, y, z]
             maintain_grip: Whether to maintain gripper closed
             max_steps: Maximum control steps
+            velocity_scale: Scale factor for maximum velocity (0.1-2.0, default 1.0)
             
         Returns:
             (success, message)
@@ -96,7 +97,8 @@ class FetchAPI:
             "move_to_position", 
             position,  # position as list 
             max_steps=max_steps, 
-            maintain_grip=maintain_grip
+            maintain_grip=maintain_grip,
+            velocity_scale=velocity_scale
         )
         if success and isinstance(result, (list, tuple)) and len(result) == 2:
             return bool(result[0]), str(result[1])

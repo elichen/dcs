@@ -104,7 +104,8 @@ class DirectExecutor:
             pass
     
     def move_to_position(self, target_pos: np.ndarray, max_steps: int = 50,
-                        maintain_grip: bool = False, step_delay: float = 0.02) -> Tuple[bool, str]:
+                        maintain_grip: bool = False, step_delay: float = 0.02,
+                        velocity_scale: float = 1.0) -> Tuple[bool, str]:
         """
         Move gripper to target position using direct control.
         
@@ -113,6 +114,7 @@ class DirectExecutor:
             max_steps: Maximum number of control steps
             maintain_grip: Whether to maintain gripper closed
             step_delay: Delay between control steps
+            velocity_scale: Scale factor for maximum velocity (0.1-2.0, default 1.0)
             
         Returns:
             (success, message)
@@ -130,8 +132,9 @@ class DirectExecutor:
                     if distance < self.tolerance:
                         return bool(True), f"Reached target (error: {distance:.4f}m)"
                     
-                    # Proportional controller
-                    velocity = np.clip(error * self.k_p, -self.max_velocity, self.max_velocity)
+                    # Proportional controller with velocity scaling
+                    scaled_max_velocity = self.max_velocity * velocity_scale
+                    velocity = np.clip(error * self.k_p, -scaled_max_velocity, scaled_max_velocity)
                     
                     # Set grip action
                     grip_action = 0.0  # Default: maintain current state
@@ -156,8 +159,9 @@ class DirectExecutor:
                 if distance < self.tolerance:
                     return True, f"Reached target (error: {distance:.4f}m)"
                 
-                # Proportional controller
-                velocity = np.clip(error * self.k_p, -self.max_velocity, self.max_velocity)
+                # Proportional controller with velocity scaling
+                scaled_max_velocity = self.max_velocity * velocity_scale
+                velocity = np.clip(error * self.k_p, -scaled_max_velocity, scaled_max_velocity)
                 
                 # Set grip action
                 grip_action = 0.0  # Default: maintain current state

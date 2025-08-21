@@ -3,7 +3,10 @@
 fetch-move - Move Fetch robot gripper to specified position
 
 Usage:
-    fetch-move <session-id> <x> <y> <z>
+    fetch-move <session-id> <x> <y> <z> [--velocity=<scale>]
+    
+Options:
+    --velocity=<scale>  Velocity scale factor (0.1-2.0, default 1.0)
     
 Output:
     JSON with success status and message
@@ -22,11 +25,12 @@ from lib.fetch_api import FetchAPI
 
 
 def main():
-    if len(sys.argv) != 5:
-        print("Usage: fetch-move <session-id> <x> <y> <z>", file=sys.stderr)
+    if len(sys.argv) < 5 or len(sys.argv) > 6:
+        print("Usage: fetch-move <session-id> <x> <y> <z> [--velocity=<scale>]", file=sys.stderr)
         return 1
     
     session_id = sys.argv[1]
+    velocity_scale = 1.0  # default
     
     try:
         x, y, z = float(sys.argv[2]), float(sys.argv[3]), float(sys.argv[4])
@@ -35,12 +39,31 @@ def main():
         print(json.dumps(result))
         return 1
     
+    # Parse optional velocity flag
+    if len(sys.argv) == 6:
+        velocity_arg = sys.argv[5]
+        if velocity_arg.startswith("--velocity="):
+            try:
+                velocity_scale = float(velocity_arg.split("=")[1])
+                if not (0.1 <= velocity_scale <= 2.0):
+                    result = {"success": False, "message": "Velocity scale must be between 0.1 and 2.0"}
+                    print(json.dumps(result))
+                    return 1
+            except (ValueError, IndexError):
+                result = {"success": False, "message": "Invalid velocity format. Use --velocity=1.0"}
+                print(json.dumps(result))
+                return 1
+        else:
+            result = {"success": False, "message": "Unknown argument. Use --velocity=<scale>"}
+            print(json.dumps(result))
+            return 1
+    
     # Execute move using Direct API
     try:
         api = FetchAPI.connect(session_id)
         # Check current gripper state to decide if we need to maintain grip
         maintain_grip = not api.is_gripper_open()
-        success, message = api.move_to([x, y, z], maintain_grip=maintain_grip)
+        success, message = api.move_to([x, y, z], maintain_grip=maintain_grip, velocity_scale=velocity_scale)
     except Exception as e:
         success, message = False, f"Direct API failed: {str(e)}"
     
