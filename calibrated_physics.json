@@ -1,48 +1,59 @@
 {
   "calibration_data": [
     {
-      "push_distance": 0.030,
-      "push_power": 0.3,
-      "actual_movement": 0.0202,
-      "raw_efficiency": 0.674,
-      "power_adjusted_efficiency": 2.245,
-      "alignment": 0.931
-    },
-    {
-      "push_distance": 0.050,
-      "push_power": 0.6,
-      "actual_movement": 0.0606,
-      "raw_efficiency": 1.213,
-      "power_adjusted_efficiency": 2.021,
-      "alignment": 0.956
-    },
-    {
-      "push_distance": 0.070,
+      "push_distance": 0.080,
       "push_power": 1.0,
-      "actual_movement": 0.1576,
-      "raw_efficiency": 2.251,
-      "power_adjusted_efficiency": 2.251,
-      "alignment": 0.975
+      "actual_movement": 0.1934,
+      "raw_efficiency": 2.418,
+      "power_adjusted_efficiency": 2.418,
+      "alignment": 0.990,
+      "notes": "Dynamic push system baseline"
     },
     {
-      "push_distance": 0.040,
-      "push_power": 0.6,
-      "actual_movement": 0.0470,
-      "raw_efficiency": 1.175,
-      "power_adjusted_efficiency": 1.959,
-      "alignment": 0.995
+      "push_distance": 0.120,
+      "push_power": 1.0,
+      "actual_movement": 0.4360,
+      "raw_efficiency": 3.634,
+      "power_adjusted_efficiency": 3.634,
+      "alignment": 0.999,
+      "notes": "High efficiency range"
     },
     {
-      "push_distance": 0.060,
-      "push_power": 0.8,
-      "actual_movement": 0.1228,
-      "raw_efficiency": 2.047,
-      "power_adjusted_efficiency": 2.559,
-      "alignment": 0.994
+      "push_distance": 0.160,
+      "push_power": 1.0,
+      "actual_movement": 0.6422,
+      "raw_efficiency": 4.014,
+      "power_adjusted_efficiency": 4.014,
+      "alignment": 0.985,
+      "notes": "Peak efficiency"
+    },
+    {
+      "push_distance": 0.200,
+      "push_power": 1.0,
+      "actual_movement": 0.5677,
+      "raw_efficiency": 2.839,
+      "power_adjusted_efficiency": 2.839,
+      "alignment": 0.999,
+      "notes": "Efficiency decline starts"
+    },
+    {
+      "push_distance": 0.250,
+      "push_power": 1.0,
+      "actual_movement": 0.8155,
+      "raw_efficiency": 3.262,
+      "power_adjusted_efficiency": 3.262,
+      "alignment": 0.997,
+      "notes": "Maximum push distance"
     }
   ],
-  "avg_raw_efficiency": 1.472,
-  "avg_power_adjusted_efficiency": 2.207,
-  "recommended_conservative_factor": 0.4,
-  "notes": "Calibration data with new sliding animation fix. Physics now continues naturally after push with proper friction. Power-adjusted efficiency accounts for different push powers (0.3-1.0)."
+  "avg_raw_efficiency": 3.233,
+  "avg_power_adjusted_efficiency": 3.233,
+  "recommended_conservative_factor": 0.6,
+  "efficiency_model": {
+    "optimal_range": "120-160mm push distance",
+    "peak_efficiency": 4.014,
+    "baseline_efficiency": 2.418,
+    "notes": "Non-linear efficiency curve with peak around 160mm push"
+  },
+  "notes": "Dynamic push calibration data with 80-250mm range. Physics efficiency varies significantly with push distance - peaks at 160mm with 4.014x efficiency."
 }

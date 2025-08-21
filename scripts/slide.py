@@ -94,8 +94,19 @@ def calculate_single_push(required_distance):
     
     conservative_push = base_push * safety_factor
     
-    # Clamp to reasonable bounds (0.5-8cm) - expanded range for different powers
-    push_distance = max(0.005, min(0.08, conservative_push))
+    # Dynamic maximum push distance based on required distance
+    # Short distances get conservative limits, long distances get higher limits
+    max_push_distance = min(0.25, max(0.08, required_distance * 0.3))
+    
+    # Clamp to dynamic bounds (0.5cm to calculated max)
+    push_distance = max(0.005, min(max_push_distance, conservative_push))
+    
+    print(f"📊 Push calculation details:")
+    print(f"   Required distance: {required_distance*1000:.1f}mm")
+    print(f"   Base push needed: {base_push*1000:.1f}mm")
+    print(f"   Conservative push: {conservative_push*1000:.1f}mm")
+    print(f"   Dynamic max limit: {max_push_distance*1000:.1f}mm")
+    print(f"   Final push distance: {push_distance*1000:.1f}mm")
     
     return push_distance, push_power, push_type
 
