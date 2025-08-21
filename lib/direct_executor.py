@@ -447,6 +447,65 @@ class DirectExecutor:
         except Exception as e:
             return False, f"Image capture failed: {str(e)}"
     
+    def step_physics(self) -> Tuple[bool, str]:
+        """
+        Step the physics simulation once with zero velocity to allow natural physics.
+        
+        This is useful for letting objects slide/fall naturally without robot movement.
+        
+        Returns:
+            (success, message)
+        """
+        try:
+            # Use lock for thread-safe execution
+            if self.env_lock:
+                with self.env_lock:
+                    # Zero velocity action but maintain current gripper state
+                    grip_action = -1.0 if not self._get_gripper_state() else 1.0
+                    action = np.array([0.0, 0.0, 0.0, grip_action], dtype=np.float32)
+                    
+                    # Execute single physics step
+                    obs, reward, terminated, truncated, info = self.env.step(action)
+                    self._render_if_needed()
+                    
+                    return True, "Physics step completed"
+            else:
+                # Fallback for backwards compatibility
+                grip_action = -1.0 if not self._get_gripper_state() else 1.0
+                action = np.array([0.0, 0.0, 0.0, grip_action], dtype=np.float32)
+                
+                # Execute single physics step
+                obs, reward, terminated, truncated, info = self.env.step(action)
+                self._render_if_needed()
+                
+                return True, "Physics step completed"
+                
+        except Exception as e:
+            return False, f"Physics step failed: {str(e)}"
+    
+    def _reset_environment(self) -> Tuple[bool, str]:
+        """
+        Reset the environment to initial state.
+        
+        Returns:
+            (success, message)
+        """
+        try:
+            # Use lock for thread-safe execution
+            if self.env_lock:
+                with self.env_lock:
+                    self.env.reset()
+                    self._render_if_needed()
+                    return True, "Environment reset successfully"
+            else:
+                # Fallback for backwards compatibility
+                self.env.reset()
+                self._render_if_needed()
+                return True, "Environment reset successfully"
+                
+        except Exception as e:
+            return False, f"Environment reset failed: {str(e)}"
+    
     def get_state(self) -> dict:
         """Get current robot and environment state."""
         return {

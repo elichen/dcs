@@ -27,7 +27,7 @@ def calculate_distance(pos1, pos2):
     return math.sqrt(sum((a - b)**2 for a, b in zip(pos1, pos2)))
 
 def wait_for_sliding_to_stop(api, timeout=3.0, stability_threshold=0.001):
-    """Wait for object to stop sliding by monitoring position changes."""
+    """Wait for object to stop sliding by monitoring position changes and stepping physics."""
     import time
     
     print(f"⏳ Waiting for sliding to stop...")
@@ -38,6 +38,9 @@ def wait_for_sliding_to_stop(api, timeout=3.0, stability_threshold=0.001):
     required_stable_readings = 8  # Need 8 consecutive stable readings (0.4 seconds)
     
     while time.time() - start_time < timeout:
+        # Step the physics simulation to allow natural sliding/friction
+        api.step_physics()
+        
         current_obj_pos, _, _ = get_positions(api)
         
         if last_pos is not None:
@@ -65,10 +68,12 @@ def calculate_single_push(required_distance):
     try:
         with open(Path(__file__).parent.parent / 'calibrated_physics.json', 'r') as f:
             physics_data = json.load(f)
-        expected_efficiency = physics_data['avg_efficiency']
+        # Use power-adjusted efficiency for more accurate predictions
+        expected_efficiency = physics_data.get('avg_power_adjusted_efficiency', 
+                                             physics_data.get('avg_efficiency', 2.207))
     except (FileNotFoundError, KeyError):
-        # Fallback to measured average if file not found
-        expected_efficiency = 2.370
+        # Fallback to new calibrated average
+        expected_efficiency = 2.207
     
     # Calculate base push parameters
     base_push = required_distance / expected_efficiency

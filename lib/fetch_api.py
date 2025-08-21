@@ -338,6 +338,47 @@ class FetchAPI:
         state = self.get_state()
         return state.get('gripper_open', True)
     
+    def step_physics(self) -> Tuple[bool, str]:
+        """
+        Step the physics simulation once with zero velocity to allow natural physics.
+        
+        This is useful for letting objects slide/fall naturally without robot movement,
+        particularly after applying forces to objects.
+        
+        Returns:
+            (success, message)
+        """
+        if self._executor is None:
+            return False, "Not connected to session"
+        
+        success, result = self._call_direct_api("step_physics")
+        if success and isinstance(result, (list, tuple)) and len(result) == 2:
+            return bool(result[0]), str(result[1])
+        elif success:
+            return True, str(result)
+        else:
+            return False, str(result)
+    
+    def reset_environment(self) -> Tuple[bool, str]:
+        """
+        Reset the environment to initial state with new random object/target positions.
+        
+        This is useful for running multiple tests without restarting the session.
+        
+        Returns:
+            (success, message)
+        """
+        if self._executor is None:
+            return False, "Not connected to session"
+        
+        success, result = self._call_direct_api("_reset_environment")
+        if success and isinstance(result, (list, tuple)) and len(result) == 2:
+            return bool(result[0]), str(result[1])
+        elif success:
+            return True, str(result)
+        else:
+            return False, str(result)
+    
     def capture_image(self, filename: Optional[str] = None) -> Tuple[bool, str]:
         """
         Capture current environment state as an image.

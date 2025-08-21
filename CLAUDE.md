@@ -467,3 +467,4 @@ Remember: This system doesn't just achieve 100% success - it does so across unli
 - env start is blocking
 - don't create some many different files. just modify existing ones
 - need to run bin/env start as a background job
+- remember that you need to start by "bin/env start" but in background, then you can see the output to see the session id. there's no --no-ui option. and && won't work since it's blocking

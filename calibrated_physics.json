@@ -1,25 +1,48 @@
 {
   "calibration_data": [
     {
-      "push_distance": 0.06,
-      "actual_movement": 0.1007,
-      "efficiency": 1.679,
-      "alignment": 0.996
+      "push_distance": 0.030,
+      "push_power": 0.3,
+      "actual_movement": 0.0202,
+      "raw_efficiency": 0.674,
+      "power_adjusted_efficiency": 2.245,
+      "alignment": 0.931
     },
     {
-      "push_distance": 0.08,
-      "actual_movement": 0.2050,
-      "efficiency": 2.562,
-      "alignment": 0.996
+      "push_distance": 0.050,
+      "push_power": 0.6,
+      "actual_movement": 0.0606,
+      "raw_efficiency": 1.213,
+      "power_adjusted_efficiency": 2.021,
+      "alignment": 0.956
     },
     {
-      "push_distance": 0.10,
-      "actual_movement": 0.2869,
-      "efficiency": 2.869,
+      "push_distance": 0.070,
+      "push_power": 1.0,
+      "actual_movement": 0.1576,
+      "raw_efficiency": 2.251,
+      "power_adjusted_efficiency": 2.251,
       "alignment": 0.975
+    },
+    {
+      "push_distance": 0.040,
+      "push_power": 0.6,
+      "actual_movement": 0.0470,
+      "raw_efficiency": 1.175,
+      "power_adjusted_efficiency": 1.959,
+      "alignment": 0.995
+    },
+    {
+      "push_distance": 0.060,
+      "push_power": 0.8,
+      "actual_movement": 0.1228,
+      "raw_efficiency": 2.047,
+      "power_adjusted_efficiency": 2.559,
+      "alignment": 0.994
     }
   ],
-  "avg_efficiency": 2.370,
+  "avg_raw_efficiency": 1.472,
+  "avg_power_adjusted_efficiency": 2.207,
   "recommended_conservative_factor": 0.4,
-  "notes": "Fresh calibration data from FetchSlide environment. Objects move 1.7-2.9x the push distance."
+  "notes": "Calibration data with new sliding animation fix. Physics now continues naturally after push with proper friction. Power-adjusted efficiency accounts for different push powers (0.3-1.0)."
 }
