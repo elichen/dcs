@@ -1,8 +1,8 @@
 # Direct Control System (DCS) for Fetch Robot
 
-A high-performance, Unix-style CLI toolkit powered by **general intelligence** for adaptive robot control. Features **zero training time**, **100% deterministic success**, and **universal task adaptation**.
+A high-performance, Unix-style CLI toolkit for robotic control. Features socket-based IPC, real-time rendering, and deterministic mathematical control algorithms.
 
-## 🚀 Quick Start
+## Quick Start
 
 ```bash
 # Start a robot session
@@ -20,11 +20,7 @@ bin/place $SESSION 1.4 0.8 0.425
 bin/env stop $SESSION
 ```
 
-## 🧠 General Intelligence for Robotics
-
-**Revolutionary Approach**: DCS doesn't use hardcoded strategies or extensive training. Instead, it leverages **general intelligence** to adapt existing tools to any robot task dynamically.
-
-### Universal Task Support
+## Task Support
 ```bash
 # Any Fetch environment - no code changes needed
 bin/env start --env FetchPush-v4        # Push objects
@@ -33,25 +29,22 @@ bin/env start --env FetchSlide-v4       # Slide objects
 bin/env start --env FetchPickAndPlace-v4 # Pick and place (default)
 ```
 
-### Intelligence-Based Strategy Generation
-- **No strategy library**: General intelligence determines approach dynamically
-- **Task analysis**: Understands object/target relationships automatically  
-- **Tool composition**: Combines basic primitives (`move`, `grip`, `lift`) creatively
-- **Geometric reasoning**: Calculates approach angles and push directions
+### Capabilities
+- **Task adaptation**: Supports multiple Fetch environments without code changes
+- **Tool composition**: Combines basic primitives (`move`, `grip`, `lift`) for complex behaviors
+- **Geometric calculations**: Computes approach angles and movement sequences
 
-### Example: Push Task (43.1mm Precision)
+### Example: Push Task
 ```bash
-# Claude's intelligent strategy (not hardcoded):
 SESSION=$(bin/env start --env FetchPush-v4)
 bin/grip $SESSION close              # Better contact surface
-bin/move $SESSION 1.52 0.72 0.425    # Behind object (calculated)
+bin/move $SESSION 1.52 0.72 0.425    # Behind object
 bin/move $SESSION 1.30 0.68 0.425    # Push toward target
-# Result: 43.1mm accuracy, task success ✅
 ```
 
-## 🏗️ Architecture Overview
+## Architecture Overview
 
-DCS uses a **socket-based IPC architecture** with Unix-style CLI tools for composable robot control:
+DCS uses a socket-based IPC architecture with Unix-style CLI tools for composable robot control:
 
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
@@ -68,11 +61,11 @@ DCS uses a **socket-based IPC architecture** with Unix-style CLI tools for compo
 ### Key Features
 - **Socket IPC**: Ultra-low latency (~50μs vs 5-10ms file-based)
 - **Thread Safety**: All MuJoCo/OpenGL operations on main thread
-- **Real-time Rendering**: 50fps smooth robot animation
+- **Real-time Rendering**: 50fps robot animation
 - **Composable Tools**: Mix and match CLI commands
-- **Zero Training**: Instant deployment with mathematical control
+- **Mathematical Control**: Deterministic algorithms with instant deployment
 
-## 📦 Installation
+## Installation
 
 ### Prerequisites
 ```bash
@@ -92,7 +85,7 @@ bin/status $SESSION
 bin/env stop $SESSION
 ```
 
-## 🛠️ CLI Tools Reference
+## CLI Tools Reference
 
 ### Session Management
 ```bash
@@ -123,7 +116,7 @@ bin/place <id> <x> <y> <z>     # Complete placement sequence
 bin/wave <id> [cycles] [speed] # Friendly wave motion
 ```
 
-## 💻 Programming Interface
+## Programming Interface
 
 For programmatic control, use the Direct API:
 
@@ -147,26 +140,26 @@ api.grip(True)  # open
 api.lift(0.15)
 ```
 
-## 📊 Performance Benchmarks
+## Performance Benchmarks
 
-| Metric | DCS + General Intelligence | Traditional RL | Hardcoded Robotics |
-|--------|---------------------------|----------------|-------------------|
-| **Setup Time** | Instant | 60-90 minutes | Days/Weeks |
-| **Success Rate** | 100% | 0-90% variable | 100% (limited) |
-| **Precision** | < 2mm | ~50mm | Variable |
-| **Task Adaptation** | **Any task instantly** | Per-task training | Manual reprogramming |
-| **Strategy Source** | **Intelligence** | Learned patterns | Human programming |
-| **Deterministic** | Yes | No | Yes |
-| **Explainable** | **Full reasoning** | Black box | Limited |
+| Metric | DCS | Traditional RL | Hardcoded Robotics |
+|--------|----|----------------|-------------------|
+| Setup Time | Instant | 60-90 minutes | Days/Weeks |
+| Success Rate | Deterministic | 0-90% variable | Limited scope |
+| Precision | < 2mm | ~50mm | Variable |
+| Task Adaptation | Multi-environment | Per-task training | Manual reprogramming |
+| Control Method | Mathematical | Learned patterns | Human programming |
+| Deterministic | Yes | No | Yes |
+| Debuggability | Full visibility | Black box | Limited |
 
-### Proven Results Across Tasks
-- **PickAndPlace**: 2mm precision, 100% success rate
-- **Push Task**: 43.1mm precision, intelligent approach calculation
-- **Universal**: Works with any Fetch environment without modification
-- **Task Completion**: 15 seconds average across all task types
-- **System Stability**: Zero crashes with thread-safe architecture
+### Results
+- **PickAndPlace**: 2mm precision
+- **Push Task**: 43.1mm precision
+- **Multi-environment**: Works with any Fetch environment without modification
+- **Task Completion**: 15 seconds average
+- **System Stability**: Thread-safe architecture
 
-## 🔧 Advanced Usage
+## Advanced Usage
 
 ### Automated Scripting
 ```bash
@@ -200,7 +193,7 @@ bin/grip $SESSION open
 bin/lift $SESSION 0.10
 ```
 
-## 🏛️ System Architecture
+## System Architecture
 
 ### Socket-Based IPC
 - **Ultra-low latency**: ~50μs message passing
@@ -223,7 +216,7 @@ DirectExecutor    ◀────  IPC Handlers
 - **OpenCV display**: Clean UI without overlays
 - **Direct rendering**: Bypass GUI framework overhead
 
-## 🔬 Technical Details
+## Technical Details
 
 ### Mathematical Control
 - **Inverse Kinematics**: Jacobian pseudoinverse method
@@ -248,7 +241,7 @@ dcs/
 └── CLAUDE.md              # Detailed system documentation
 ```
 
-## 🐛 Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 
@@ -278,7 +271,7 @@ pip install gymnasium gymnasium-robotics mujoco numpy opencv-python
 - The DirectExecutor properly tracks object positions after manipulation
 - If positions seem incorrect, restart the session
 
-## 🤝 Contributing
+## Contributing
 
 DCS is designed for extensibility:
 
@@ -300,44 +293,12 @@ pip install -e .
 python -m pytest tests/
 ```
 
-## 📈 Revolutionary Paradigm: Intelligence-Driven Robotics
 
-### DCS + General Intelligence vs Traditional Approaches
-
-#### The Intelligence Advantage
-- **Strategy Generation**: Real-time task analysis and approach calculation
-- **Universal Adaptation**: Same tools work across all tasks without retraining
-- **Geometric Reasoning**: Understands spatial relationships automatically
-- **Creative Composition**: Combines basic tools in novel ways per task
-
-#### Quantitative Comparison
-| Aspect | DCS + Intelligence | Reinforcement Learning | Traditional Programming |
-|--------|-------------------|----------------------|------------------------|
-| **New Task Setup** | **Instant** | 60-90 minutes | Days to weeks |
-| **Task Varieties** | **Unlimited** | One per training | One per implementation |
-| **Success Predictability** | **100% deterministic** | Variable (0-90%) | 100% (single task) |
-| **Strategy Source** | **Real-time intelligence** | Learned patterns | Human programming |
-| **Adaptation Speed** | **Immediate** | Requires retraining | Requires reprogramming |
-| **Explainability** | **Full reasoning** | Black box | Limited documentation |
-
-#### Breakthrough Demonstration
-```bash
-# Same exact tools, different tasks - intelligence adapts strategy:
-
-# Pick task: Lift object
-bin/grip $SESSION open → bin/move $SESSION above → bin/grip $SESSION close → bin/lift
-
-# Push task: Position behind and push  
-bin/grip $SESSION close → bin/move $SESSION behind → bin/move $SESSION through
-
-# No retraining. No reprogramming. Just intelligence.
-```
-
-## 📄 License
+## License
 
 MIT License - see LICENSE file for details.
 
-## 📚 Citation
+## Citation
 
 ```bibtex
 @software{dcs2024,
@@ -349,21 +310,3 @@ MIT License - see LICENSE file for details.
 }
 ```
 
-## 🌟 Revolutionary Achievements
-
-- **🧠 General Intelligence Integration**: First robotic system powered by real-time intelligence
-- **🔄 Universal Task Adaptation**: Any Fetch environment without code changes  
-- **⚡ Zero Setup Time**: Intelligence eliminates training/programming phases
-- **🎯 Multi-Task Precision**: <2mm (pick) to 43mm (push) across task types
-- **⚙️ High Performance**: 50μs socket IPC with 50fps real-time rendering
-- **🔧 Tool Composition**: Intelligence creatively combines basic primitives
-- **🔍 Full Explainability**: Every decision reasoned and traceable
-
-### The Paradigm Shift
-
-**Before**: Task-specific programming or training for each robot behavior
-**After**: General intelligence adapts universal tools to any task instantly
-
----
-
-*Powered by intelligence. Adapts to anything. Succeeds everywhere.*
