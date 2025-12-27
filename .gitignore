@@ -6,6 +6,11 @@ __pycache__/
 .DS_Store
 
 # Project specific
-recordings/
 captures/
-*.gif
+
+# Keep demo GIFs, ignore others
+recordings/*.gif
+!recordings/pick_and_place.gif
+!recordings/push.gif
+!recordings/reach.gif
+!recordings/slide.gif
