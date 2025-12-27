@@ -356,7 +356,7 @@ class FetchSession:
         if self.record_gif and self.gif_frames:
             try:
                 print(f"🎬 Saving GIF with {len(self.gif_frames)} frames...")
-                self.imageio.mimsave(str(self.gif_path), self.gif_frames, fps=30)
+                self.imageio.mimsave(str(self.gif_path), self.gif_frames, fps=30, loop=0)
                 print(f"✅ GIF saved: {self.gif_path}")
             except Exception as e:
                 print(f"❌ Failed to save GIF: {e}")
