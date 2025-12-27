@@ -317,6 +317,11 @@ class FetchSession:
                     import json
                     json_result = json.dumps(result)
                     self.command_results[command_id] = (True, json_result)
+
+                    # Sync grip state from executor to session for background maintenance
+                    self.current_grip_action = executor.current_grip_action
+                    self.last_action_time = time.time()
+
                     print(f"✅ Command {command_id} completed successfully")
                 else:
                     self.command_results[command_id] = (False, f"Method '{method}' not found on DirectExecutor")

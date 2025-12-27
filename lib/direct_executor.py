@@ -67,19 +67,20 @@ class DirectExecutor:
         try:
             joint_names = ['robot0:l_gripper_finger_joint', 'robot0:r_gripper_finger_joint']
             positions = []
-            
+
             for joint_name in joint_names:
                 joint_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_JOINT, joint_name)
                 if joint_id != -1:
                     qpos_addr = self.model.jnt_qposadr[joint_id]
                     positions.append(self.data.qpos[qpos_addr])
-            
+
             if positions:
                 avg_position = np.mean(positions)
-                return bool(avg_position > 0.01)  # True if open
+                # Threshold: 0.035 to distinguish open (0.05) from closed-with-object (0.024)
+                return bool(avg_position > 0.035)  # True if open
         except:
             pass
-        
+
         return True  # Default to open
     
     def _render_if_needed(self):
@@ -140,7 +141,11 @@ class DirectExecutor:
                     grip_action = 0.0  # Default: maintain current state
                     if maintain_grip:
                         grip_action = -1.0  # Keep gripper closed
-                    
+
+                    # Track grip state for session sync
+                    if grip_action != 0.0:
+                        self.current_grip_action = grip_action
+
                     action = np.array([velocity[0], velocity[1], velocity[2], grip_action], dtype=np.float32)
                     
                     # Execute step directly - no IPC!
@@ -167,16 +172,20 @@ class DirectExecutor:
                 grip_action = 0.0  # Default: maintain current state
                 if maintain_grip:
                     grip_action = -1.0  # Keep gripper closed
-                
+
+                # Track grip state for session sync
+                if grip_action != 0.0:
+                    self.current_grip_action = grip_action
+
                 action = np.array([velocity[0], velocity[1], velocity[2], grip_action], dtype=np.float32)
-                
+
                 # Execute step directly - no IPC!
                 obs, reward, terminated, truncated, info = self.env.step(action)
                 self._render_if_needed()
-                
+
                 if step_delay > 0:
                     time.sleep(step_delay)
-        
+
         # Check final distance
         final_distance = np.linalg.norm(target_pos - self._get_gripper_position())
         return bool(final_distance < 0.01), f"Stopped at distance: {final_distance:.4f}m"
